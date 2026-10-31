@@ -212,5 +212,4 @@ def render_media_studio():
             if st.button("Retry Thread Operations", use_container_width=True):
                 VideoCompilationWorker._tasks.pop(task_key, None)
                 st.rerun()
-                render_media_studio()
 
