@@ -1,5 +1,4 @@
-import bytes
-from typing import dict
+from typing import Dict
 from src.api.client import OpenRouterClient
 
 class MediaService:
@@ -13,7 +12,7 @@ class MediaService:
             "response_format": "url"
         }
         res = self.client.post("images/generations", payload)
-        return res.json()['data'][0]['url']
+        return res.json()['data']['url']
 
     def text_to_speech(self, text: str, model: str) -> bytes:
         payload = {
