@@ -44,13 +44,12 @@ def render_image_tab():
         with col_l:
             st.write("#### Design Configuration Canvas")
             
-            # FIXED: Set official OpenRouter general free-tier routing endpoints
+            # FIXED: Assigned explicit, dedicated active free-tier image model endpoint identifiers
             image_model = st.selectbox(
                 "Select Dynamic Generation Engine:",
                 [
-                    "openrouter/free",
+                    "bytedance/sdxl-lightning",
                     "google/gemini-2.5-flash-image",
-                    "google/gemini-3.1-flash-lite-image",
                     "openai/gpt-image-2",
                     "black-forest-labs/flux-3-image"
                 ],
