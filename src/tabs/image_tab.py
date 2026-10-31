@@ -6,16 +6,14 @@ def render_image_tab():
     
     from src.api.client import OpenRouterClient
     from src.api.media_service import MediaService
-    from src.api.text_service import TextService
     
     client = OpenRouterClient()
     media_service = MediaService(client)
-    text_service = TextService(client)
     
     tab_gen, tab_vision = st.tabs(["✨ Text-To-Image Engine", "👁️ Vision & File Analysis"])
     
     # ---------------------------------------------------------
-    # SUB-TAB 1: TEXT TO IMAGE GENERATION WORKSPACE
+    # SUB-TAB 1: TEXT TO IMAGE ENGINE
     # ---------------------------------------------------------
     with tab_gen:
         col_l, col_r = st.columns(2)
@@ -36,28 +34,32 @@ def render_image_tab():
                 
             if render_clicked or feed_clicked:
                 if not img_prompt.strip():
-                    st.warning("⚠️ Please provide a description layout prompt first.")
+                    st.warning("Awaiting creative layout parameters...")
                 else:
-                    with st.spinner("Processing generative graphic assets..."):
+                    with st.spinner("Compiling image data stream from OpenRouter..."):
                         try:
-                            url = media_service.generate_image(img_prompt, image_model)
-                            st.session_state["last_generated_img_url"] = url
-                            
-                            if feed_clicked:
-                                st.session_state.document_draft += f"\n\n![Generated Graphic]({url})\n"
-                                st.toast("Image canvas link cleanly injected into Tab 1!")
+                            # Generate and store raw data bytes directly into application memory
+                            img_bytes = media_service.generate_image(img_prompt, image_model)
+                            st.session_state["last_generated_img_bytes"] = img_bytes
+                            st.success("Asset generation sequence complete!")
                         except Exception as e:
                             st.error(f"Image System Error: {str(e)}")
                         
         with col_r:
             st.write("#### Asset Visual Canvas")
-            if "last_generated_img_url" in st.session_state:
-                st.image(st.session_state["last_generated_img_url"], caption="Active Visual Track Frame")
+            if "last_generated_img_bytes" in st.session_state:
+                st.image(st.session_state["last_generated_img_bytes"], caption="Active Visual Track Frame")
+                
+                if feed_clicked:
+                    # Transform raw bytes locally to embed directly as viewable inline Markdown
+                    b64_img = base64.b64encode(st.session_state["last_generated_img_bytes"]).decode("utf-8")
+                    st.session_state.document_draft += f"\n\n![Generated Graphic](data:image/png;base64,{b64_img})\n"
+                    st.toast("Embedded baseline data image asset directly into Document Editor Tab!")
             else:
                 st.info("Awaiting creative visual mapping generations...")
 
     # ---------------------------------------------------------
-    # SUB-TAB 2: ENTERPRISE IMAGE UPLOAD & VISION ANALYSIS
+    # SUB-TAB 2: IMAGE FILE UPLOAD & VISION ANALYSIS HUB
     # ---------------------------------------------------------
     with tab_vision:
         col_v_l, col_v_r = st.columns(2)
@@ -76,14 +78,12 @@ def render_image_tab():
                 if uploaded_file is None:
                     st.warning("⚠️ Please upload a valid image file first.")
                 else:
-                    with st.spinner("Analyzing image array context via OpenRouter Multimodal Engine..."):
+                    with st.spinner("Analyzing image array context..."):
                         try:
-                            # Read and convert the file into an safe base64 data string payload wrapper
                             file_bytes = uploaded_file.read()
                             base64_image = base64.b64encode(file_bytes).decode("utf-8")
                             mime_type = uploaded_file.type
                             
-                            # Construct structural OpenAI-compatible vision message block array
                             vision_payload = {
                                 "model": vision_model,
                                 "messages": [
