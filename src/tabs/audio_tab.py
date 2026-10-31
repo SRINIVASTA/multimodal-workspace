@@ -3,11 +3,9 @@ import streamlit as st
 def render_audio_tab():
     st.subheader("🎵 Hyper-Realistic Voice Synthesis Engine")
     
-    from src.api.client import OpenRouterClient
-    from src.api.media_service import MediaService
-    
-    client = OpenRouterClient()
-    media_service = MediaService(client)
+    # Import and bind identical backend unified service client
+    from src.api.media_service import UnifiedAIService
+    ai_service = UnifiedAIService()
     
     # Dynamic Voice Engine Selection Matrix
     audio_model = st.selectbox(
@@ -20,7 +18,6 @@ def render_audio_tab():
         key="audio_dynamic_model_selector"
     )
     
-    # FOLDED CODE PROMPTS: Pre-built modular narration scripts
     with st.expander("💡 View Folded Script Templates"):
         st.write("**Corporate Summary Briefing:**")
         st.code("Good morning team. Welcome to the automated operations performance review. Regional sales metrics indicate strong upward trajectories.", language="text")
@@ -54,10 +51,10 @@ def render_audio_tab():
         else:
             with st.spinner("Compiling high-fidelity clean stream tracks..."):
                 try:
-                    # Pointing to the patched client-backed media service pipeline
-                    # Restricting payload window defensively to prevent standard context limits
-                    audio_bytes = media_service.text_to_speech(audio_text[:2000], model=audio_model)
+                    # Fires request securely to the refactored, endpoint-safe audio node route
+                    audio_bytes = ai_service.text_to_speech(text=audio_text[:2000], model=audio_model)
+                    
                     st.audio(audio_bytes, format="audio/mp3")
-                    st.success("Clean high-fidelity audio narration generated!")
+                    st.success("Clean high-fidelity audio narration generated successfully!")
                 except Exception as e:
                     st.error(f"Audio API Disconnect: {str(e)}")
