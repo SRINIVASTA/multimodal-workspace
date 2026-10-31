@@ -6,9 +6,11 @@ def render_image_tab():
     
     from src.api.client import OpenRouterClient
     from src.api.media_service import MediaService
+    from src.api.text_service import TextService
     
     client = OpenRouterClient()
     media_service = MediaService(client)
+    text_service = TextService(client)
     
     tab_gen, tab_vision = st.tabs(["✨ Text-To-Image Engine", "👁️ Vision & File Analysis"])
     
@@ -19,9 +21,15 @@ def render_image_tab():
         col_l, col_r = st.columns(2)
         with col_l:
             st.write("#### Design Configuration Canvas")
+            
+            # FIXED: Updated string names to match exact active model paths
             image_model = st.selectbox(
                 "Select Dynamic Generation Engine:",
-                ["black-forest-labs/flux-1-schnell", "openai/dall-e-3"],
+                [
+                    "openai/dall-e-3",
+                    "black-forest-labs/flux-schnell",
+                    "stabilityai/stable-diffusion-3-medium"
+                ],
                 key="image_tab_engine_selector"
             )
             img_prompt = st.text_area("Graphic Specifications Layout Prompt:", key="image_tab_raw_prompt_input")
@@ -38,7 +46,6 @@ def render_image_tab():
                 else:
                     with st.spinner("Compiling image data stream from OpenRouter..."):
                         try:
-                            # Fetch and store the clean asset web URL string directly
                             url = media_service.generate_image(img_prompt, image_model)
                             st.session_state["last_generated_img_url"] = url
                             st.success("Asset generation sequence complete!")
@@ -51,7 +58,6 @@ def render_image_tab():
                 st.image(st.session_state["last_generated_img_url"], caption="Active Visual Track Frame")
                 
                 if feed_clicked:
-                    # Append the live hosted image URL straight into the primary text matrix markdown string
                     st.session_state.document_draft += f"\n\n![Generated Graphic]({st.session_state['last_generated_img_url']})\n"
                     st.toast("Embedded asset URL link directly into Document Editor Tab!")
             else:
