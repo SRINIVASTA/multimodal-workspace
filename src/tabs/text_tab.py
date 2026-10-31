@@ -13,6 +13,10 @@ def render_text_tab():
     client = OpenRouterClient()
     text_service = TextService(client)
     
+    # CRITICAL FIX: Ensure the widget key matches the live working draft buffer state initially
+    if "text_tab_canvas_editor" not in st.session_state:
+        st.session_state["text_tab_canvas_editor"] = st.session_state.document_draft
+
     col_in, col_out = st.columns(2)
     with col_in:
         st.write("#### Research Parameters")
@@ -31,7 +35,6 @@ def render_text_tab():
         
         topic = st.text_input("Target Analysis Topic:", key="text_tab_topic_input")
         
-        # FOLDED CODE PROMPTS: Pre-built templates inside the code workspace
         with st.expander("💡 View Sample Research Prompts"):
             st.code("Comprehensive analysis of global microchip supply chains in 2026", language="text")
             st.code("Technical deep-dive on decentralized edge computing security matrix solutions", language="text")
@@ -43,16 +46,23 @@ def render_text_tab():
             else:
                 with st.spinner("Processing deep technical analysis..."):
                     try:
-                        st.session_state.document_draft = text_service.generate_document(topic, model=text_model)
+                        # 1. Fetch text data from client pipeline
+                        response_content = text_service.generate_document(topic, model=text_model)
+                        
+                        # 2. CRITICAL FIX: Update BOTH state vectors to keep tracking canvas unified
+                        st.session_state.document_draft = response_content
+                        st.session_state["text_tab_canvas_editor"] = response_content
+                        
                         st.rerun()
                     except Exception as e:
                         st.error(f"Text Generation Exception: {str(e)}")
                     
     with col_out:
         st.write("#### Live Document Canvas")
+        
+        # CRITICAL FIX: Removed competing value= argument to allow the session_state key to update fluidly
         st.session_state.document_draft = st.text_area(
             "Workspace Editor Canvas", 
-            value=st.session_state.document_draft, 
             height=350, 
             key="text_tab_canvas_editor"
         )
