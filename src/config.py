@@ -3,8 +3,8 @@ import streamlit as st
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # FIXED: Appended /api/v1 to target the active OpenRouter API endpoint map
-    BASE_URL: str = "https://openrouter.ai"
+    # FIXED: Explicitly appended /api/v1 onto the base URL string layout
+    BASE_URL: str = "https://openrouter.ai/api/v1"
     APP_URL: str = "http://localhost:8501"
     
     @property
