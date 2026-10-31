@@ -1,26 +1,49 @@
-from typing import Dict
-from src.api.client import OpenRouterClient
+import requests
+from src.config import settings
 
 class MediaService:
-    def __init__(self, client: OpenRouterClient):
+    def __init__(self, client=None):
         self.client = client
 
-    def generate_image(self, prompt: str, model: str) -> str:
-        """Generates creative assets using standard index zero layout array lookups."""
+    def generate_image(self, prompt: str, model: str) -> bytes:
+        """
+        Generates images by targeting OpenRouter's official /api/v1/images route.
+        Returns raw image bytes directly from the API stream layer.
+        """
+        if not settings.OPENROUTER_API_KEY:
+            raise ValueError("Authentication credentials missing: OPENROUTER_API_KEY is unset.")
+            
+        # CORRECT DEDICATED IMAGE GENERATION PATH
+        target_url = "https://openrouter.ai/api/v1/images"
+        
         payload = {
             "model": model,
-            "prompt": prompt,
-            "response_format": "url"
+            "prompt": prompt
         }
-        res = self.client.post("images/generations", payload)
         
-        # PRODUCTION FIX: Added explicit index mapping [0] matching OpenRouter payload signatures
-        return res.json()['data'][0]['url']
+        response = requests.post(
+            url=target_url,
+            headers=settings.headers,
+            json=payload,
+            timeout=60
+        )
+        response.raise_for_status()
+        
+        # OpenRouter's unified image endpoint drops raw image data bytes back
+        return response.content
 
     def text_to_speech(self, text: str, model: str) -> bytes:
+        """Synthesizes high-fidelity voice track data streams."""
+        target_url = "https://openrouter.ai"
         payload = {
             "model": model,
             "input": text
         }
-        res = self.client.post("audio/speech", payload)
-        return res.content
+        response = requests.post(
+            url=target_url,
+            headers=settings.headers,
+            json=payload,
+            timeout=60
+        )
+        response.raise_for_status()
+        return response.content
