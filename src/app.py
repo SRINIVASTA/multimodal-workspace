@@ -2,6 +2,7 @@ import sys
 import os
 
 # Dynamically inject the root repository path into Python's search matrix
+# This prevents the ModuleNotFoundError on Streamlit Cloud deployment architectures
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
@@ -14,8 +15,11 @@ SessionStateManager.initialize()
 
 st.title("⚙️ Enterprise Multi-Modal Studio")
 
-@st.cache_resource(show_spinner=False)
 def initialize_core_services():
+    """
+    Initializes core engine client handlers dynamically on each run.
+    Bypasses structural caching layers entirely to clear out stale zombie URLs.
+    """
     from src.api.client import OpenRouterClient
     from src.api.text_service import TextService
     from src.api.media_service import MediaService
@@ -26,6 +30,7 @@ def initialize_core_services():
         "media": MediaService(core_client)
     }
 
+# Read fresh live service instances straight from disk
 services = initialize_core_services()
 
 if not settings.OPENROUTER_API_KEY:
