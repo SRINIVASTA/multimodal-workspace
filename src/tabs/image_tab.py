@@ -52,6 +52,9 @@ def render_image_tab():
                     "google/gemini-2.5-flash-image",
                     "openai/gpt-image-2",
                     "black-forest-labs/flux-3-image"
+                    "openai/gpt-4o-mini-tts-2025-12-15",
+                    "openai/gpt-4o-audio-preview",
+                    "mistralai/voxtral-mini-tts-2603"
                 ],
                 key="image_tab_engine_selector"
             )
