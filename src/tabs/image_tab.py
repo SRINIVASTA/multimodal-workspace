@@ -1,5 +1,23 @@
 import streamlit as st
 import base64
+import io
+from PIL import Image, ImageDraw
+
+def get_sandbox_placeholder_image():
+    """Generates a high-quality local placeholder image asset dynamically in memory."""
+    # Create a clean solid slate canvas (800x450 landscape aspect ratio)
+    img = Image.new('RGB', (800, 450), color='#1E293B') # Premium slate gray
+    d = ImageDraw.Draw(img)
+    
+    # Draw simple design bounding layout vectors
+    d.rectangle([(20, 20), (780, 430)], outline='#38BDF8', width=3) # Neon sky blue trim
+    d.line([(20, 20), (780, 430)], fill='#334155', width=2)
+    d.line([(20, 430), (780, 20)], fill='#334155', width=2)
+    
+    # Save the output canvas raw pixels directly into a local RAM bytes buffer stream
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    return img_byte_arr.getvalue()
 
 def render_image_tab():
     st.subheader("🎨 Graphic Design & Vision Analysis Studio")
@@ -62,11 +80,16 @@ def render_image_tab():
                     with st.spinner("Compiling image data stream..."):
                         try:
                             if sandbox_mode:
-                                st.session_state["last_generated_img_url"] = "https://unsplash.com"
+                                # FIXED: Stores raw independent bytes buffer instead of an invalid website URL link string
+                                st.session_state["last_generated_img_data"] = get_sandbox_placeholder_image()
+                                st.session_state["last_generated_img_url"] = "https://placeholder.com"
                                 st.success("🎉 Asset compilation completed successfully (Sandbox Mode Profile)!")
                             else:
                                 url = media_service.generate_image(img_prompt, image_model)
                                 st.session_state["last_generated_img_url"] = url
+                                # Clear raw byte arrays so remote URL loads explicitly take precedence
+                                if "last_generated_img_data" in st.session_state:
+                                    del st.session_state["last_generated_img_data"]
                                 st.success("Asset generation sequence complete!")
                         except Exception as e:
                             if "402" in str(e):
@@ -76,15 +99,21 @@ def render_image_tab():
                         
         with col_r:
             st.write("#### Asset Visual Canvas")
-            if "last_generated_img_url" in st.session_state:
-                st.image(st.session_state["last_generated_img_url"], caption="Active Visual Track Frame")
-                if feed_clicked:
-                    st.session_state.document_draft += f"\n\n![Generated Graphic]({st.session_state['last_generated_img_url']})\n"
-                    st.toast("Embedded asset URL link directly into Document Editor Tab!")
+            
+            # FIXED RENDER ENGINE: Tries reading pure binary assets first, drops back onto link strings smoothly
+            if "last_generated_img_data" in st.session_state:
+                st.image(st.session_state["last_generated_img_data"], caption="Active Visual Track Frame (Local Sandbox)", use_container_width=True)
+            elif "last_generated_img_url" in st.session_state:
+                st.image(st.session_state["last_generated_img_url"], caption="Active Visual Track Frame (Live Remote API)", use_container_width=True)
             else:
                 st.info("Awaiting creative visual mapping generations...")
 
+            if feed_clicked and "last_generated_img_url" in st.session_state:
+                st.session_state.document_draft += f"\n\n![Generated Graphic]({st.session_state['last_generated_img_url']})\n"
+                st.toast("Embedded asset URL link directly into Document Editor Tab!")
+
     with tab_vision:
+        # Keep vision system analysis logic unmodified...
         col_v_l, col_v_r = st.columns(2)
         with col_v_l:
             st.write("#### Upload Target Document / Image")
