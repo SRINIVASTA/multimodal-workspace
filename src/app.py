@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Dynamically inject the root repository path into Python's search matrix
+# This prevents the ModuleNotFoundError on Streamlit Cloud deployment architectures
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import streamlit as st
 from src.config import settings
 from src.core.state import SessionStateManager
