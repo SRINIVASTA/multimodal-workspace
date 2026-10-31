@@ -5,8 +5,8 @@ class TextService:
     def __init__(self, client: OpenRouterClient):
         self.client = client
 
-    def generate_document(self, topic: str, model: str = "google/gemini-2.5-flash") -> str:
-        """Generates structured report matrices using an active, stable model identifier mapping."""
+    def generate_document(self, topic: str, model: str) -> str:
+        """Generates structured report matrices with restricted max token ceilings to prevent budget errors."""
         payload = {
             "model": model,
             "messages": [
@@ -14,7 +14,9 @@ class TextService:
                     "role": "user", 
                     "content": f"Write a comprehensive technical report on: {topic}. Include clean markdown citations."
                 }
-            ]
+            ],
+            # BUDGET FIX: Lower max_tokens explicitly to prevent 402 affordability crashes
+            "max_tokens": 1200
         }
         try:
             res = self.client.post("chat/completions", payload)
@@ -29,12 +31,12 @@ class TextService:
                 raise RuntimeError(f"OpenRouter Connection Error {api_err.response.status_code}: {api_err.response.text}")
             raise api_err
 
-    def selective_edit(self, block: str, action: str, model: str = "google/gemini-2.5-flash") -> str:
-        """Transforms distinct localized paragraphs with explicit array resolution bounds."""
+    def selective_edit(self, block: str, action: str, model: str) -> str:
         prompt = f"Perform the following operation: '{action}' on this text block. Return ONLY the modified text:\n\n{block}"
         payload = {
             "model": model,
-            "messages": [{"role": "user", "content": prompt}]
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1000
         }
         try:
             res = self.client.post("chat/completions", payload)
@@ -43,16 +45,3 @@ class TextService:
             if hasattr(api_err, 'response') and api_err.response is not None:
                 raise RuntimeError(f"Selective Edit API Exception {api_err.response.status_code}: {api_err.response.text}")
             raise api_err
-
-    def generate_plotly_code(self, context: str, query: str, model: str = "google/gemini-2.5-flash") -> str:
-        """Generates executable Plotly graphs dynamically via programmatic execution parameters."""
-        system_rules = "Write ONLY clean, executable Python code utilizing plotly.express. Output the chart object into a variable named 'fig'. Do not include markdown ticks."
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_rules},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuery: {query}"}
-            ]
-        }
-        res = self.client.post("chat/completions", payload)
-        return res.json()['choices'][0]['message']['content']
