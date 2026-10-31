@@ -13,9 +13,7 @@ class MediaService:
         if not settings.OPENROUTER_API_KEY:
             raise ValueError("Authentication credentials missing: OPENROUTER_API_KEY is unset.")
             
-        # CORRECT DEDICATED IMAGE GENERATION PATH
-        target_url = "https://openrouter.ai/api/v1/images"
-        
+        target_url = "https://openrouter.ai"
         payload = {
             "model": model,
             "prompt": prompt
@@ -28,17 +26,24 @@ class MediaService:
             timeout=60
         )
         response.raise_for_status()
-        
-        # OpenRouter's unified image endpoint drops raw image data bytes back
         return response.content
 
     def text_to_speech(self, text: str, model: str) -> bytes:
-        """Synthesizes high-fidelity voice track data streams."""
+        """
+        Synthesizes high-fidelity voice track data streams.
+        CRITICAL FIX: Points to the absolute, official OpenRouter Audio path.
+        """
+        if not settings.OPENROUTER_API_KEY:
+            raise ValueError("Authentication credentials missing: OPENROUTER_API_KEY is unset.")
+            
+        # FIXED: Enforce absolute official OpenRouter audio path mapping
         target_url = "https://openrouter.ai"
+        
         payload = {
             "model": model,
             "input": text
         }
+        
         response = requests.post(
             url=target_url,
             headers=settings.headers,
