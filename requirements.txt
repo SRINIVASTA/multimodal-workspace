@@ -6,3 +6,4 @@ moviepy
 pydantic
 python-dotenv
 pydantic-settings
+python-3.11
