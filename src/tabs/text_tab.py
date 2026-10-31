@@ -8,12 +8,11 @@ from src.utils.file_parser import extract_text_from_file
 def render_text_tab():
     st.subheader("📝 Advanced Document Generation & Analysis Engine")
     
-    from src.api.client import OpenRouterClient
-    from src.api.text_service import TextService
+    # Import and bind unified backend AI service client
+    from src.api.media_service import UnifiedAIService
+    ai_service = UnifiedAIService()
     
-    client = OpenRouterClient()
-    text_service = TextService(client)
-    
+    # Synchronize tracking canvases
     if "text_tab_canvas_editor" not in st.session_state:
         st.session_state["text_tab_canvas_editor"] = st.session_state.document_draft
         
@@ -36,7 +35,6 @@ def render_text_tab():
             key="text_dynamic_model_selector"
         )
         
-        # Mode Selection Matrix
         mode = st.radio("Choose Mode:", ["Topic Synthesis", "Analyze Uploaded Document"], horizontal=True)
         
         if mode == "Topic Synthesis":
@@ -52,9 +50,18 @@ def render_text_tab():
                 else:
                     with st.spinner("Processing deep technical analysis..."):
                         try:
-                            response_content = text_service.generate_document(topic, model=text_model)
+                            # Unified API call structure
+                            messages = [
+                                {
+                                    "role": "user",
+                                    "content": f"Write a comprehensive technical report on: {topic}. Include clean markdown citations."
+                                }
+                            ]
+                            response_content = ai_service.generate_text(messages=messages, model=text_model)
+                            
                             st.session_state.document_draft = response_content
                             st.session_state["text_tab_canvas_editor"] = response_content
+                            st.slots = {} 
                             st.rerun()
                         except Exception as e:
                             st.error(f"Text Generation Exception: {str(e)}")
@@ -68,7 +75,6 @@ def render_text_tab():
             )
             
             if uploaded_doc is not None:
-                # Cache parsed results so re-renders don't re-parse the physical layout stream
                 if st.button("📥 Load & Parse Document Target", use_container_width=True):
                     with st.spinner("Decoding document blocks..."):
                         st.session_state["extracted_doc_context"] = extract_text_from_file(uploaded_doc)
@@ -76,7 +82,7 @@ def render_text_tab():
             
             if st.session_state["extracted_doc_context"]:
                 st.info("💡 Document context active in memory. Ask your question below:")
-                user_question = st.text_area("Analysis Query Prompt:", placeholder="e.g., Summarize the financial vulnerabilities or extract the core trends.")
+                user_question = st.text_area("Analysis Query Prompt:", placeholder="e.g., Summarize the financial vulnerabilities or extract core trends.")
                 
                 if st.button("🔬 Execute Context Analysis", use_container_width=True):
                     if not user_question.strip():
@@ -84,13 +90,17 @@ def render_text_tab():
                     else:
                         with st.spinner("Analyzing document matrix layers..."):
                             try:
-                                # Packaging both the custom text query and the file context injection safely
-                                complete_prompt = (
-                                    f"Context data from uploaded document:\n"
-                                    f"---START CONTEXT---\n{st.session_state['extracted_doc_context'][:8000]}\n---END CONTEXT---\n\n"
-                                    f"User Instruction: {user_question}"
-                                )
-                                response_content = text_service.generate_document(complete_prompt, model=text_model)
+                                messages = [
+                                    {
+                                        "role": "user",
+                                        "content": (
+                                            f"Context data from uploaded document:\n"
+                                            f"---START CONTEXT---\n{st.session_state['extracted_doc_context'][:8000]}\n---END CONTEXT---\n\n"
+                                            f"User Instruction: {user_question}"
+                                        )
+                                    }
+                                ]
+                                response_content = ai_service.generate_text(messages=messages, model=text_model)
                                 st.session_state.document_draft = response_content
                                 st.session_state["text_tab_canvas_editor"] = response_content
                                 st.rerun()
