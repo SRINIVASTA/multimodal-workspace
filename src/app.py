@@ -2,7 +2,6 @@ import sys
 import os
 
 # Dynamically inject the root repository path into Python's search matrix
-# This prevents the ModuleNotFoundError on Streamlit Cloud deployment architectures
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
@@ -15,7 +14,6 @@ SessionStateManager.initialize()
 
 st.title("⚙️ Enterprise Multi-Modal Studio")
 
-# 1. CACHED SERVICE ORCHESTRATION LAYER (Ensures instantaneous initial desktop rendering)
 @st.cache_resource(show_spinner=False)
 def initialize_core_services():
     from src.api.client import OpenRouterClient
@@ -43,15 +41,18 @@ with tab_doc:
         topic = st.text_input("Target Analysis Topic:")
         if st.button("Query Web Engine"):
             with st.spinner("Executing real-time technical web crawl analysis..."):
-                st.session_state.document_draft = services["text"].generate_document(topic)
-            st.rerun()
+                try:
+                    st.session_state.document_draft = services["text"].generate_document(topic)
+                    st.rerun()
+                except Exception as e:
+                    st.error("❌ OpenRouter Request Rejected:")
+                    st.info(str(e))
             
     with col_r:
         st.subheader("Live Document Matrix")
         st.session_state.document_draft = st.text_area("Workspace Editor", value=st.session_state.document_draft, height=350)
 
-# 2. ISOLATED WORKSPACE MANAGEMENT BLOCK VIA ST.FRAGMENT
-@st.fragment(run_every=2.0)  # Polling interface checks track progress indicators cleanly every 2 seconds
+@st.fragment(run_every=2.0)
 def render_media_studio():
     col_img, col_aud = st.columns(2)
     
@@ -61,20 +62,22 @@ def render_media_studio():
         img_prompt = st.text_area("Graphic Specifications Layout Prompt:")
         if st.button("Render Canvas Asset"):
             with st.spinner("Generating creative assets..."):
-                url = services["media"].generate_image(img_prompt, img_model)
-            st.image(url)
+                try:
+                    url = services["media"].generate_image(img_prompt, img_model)
+                    st.image(url)
+                except Exception as e:
+                    st.error("❌ Image Request Failed:")
+                    st.info(str(e))
 
     with col_aud:
         st.subheader("Asynchronous Video Production Pipeline")
         st.info("Compile synthetic commercial structures inside decoupled background tasks.")
         
-        # Unique task identifier for demonstration
         task_key = "commercial_render_prod"
         status_data = VideoCompilationWorker.get_task_status(task_key)
         
         if status_data["status"] == "NOT_FOUND":
             if st.button("Launch Asynchronous Media Render Workflow"):
-                # Seed system workspace directory mocks
                 with open("temp_broll.mp4", "wb") as f: f.write(b"Mock Video Data")
                 with open("temp_voiceover.mp3", "wb") as f: f.write(b"Mock Audio Data")
                 
@@ -94,7 +97,6 @@ def render_media_studio():
             st.success("🎉 Background execution worker pipeline finished compiling media assets successfully!")
             st.video(status_data["file"])
             if st.button("Reset Compilation Window"):
-                # Clear pipeline reference state
                 VideoCompilationWorker._tasks.pop(task_key, None)
                 st.rerun()
                 
