@@ -44,11 +44,11 @@ def render_image_tab():
         with col_l:
             st.write("#### Design Configuration Canvas")
             
-            # FIXED: Injected free tier models to run prompts without credits
+            # FIXED: Set official OpenRouter general free-tier routing endpoints
             image_model = st.selectbox(
                 "Select Dynamic Generation Engine:",
                 [
-                    "black-forest-labs/flux-1-schnell:free",
+                    "openrouter/free",
                     "openai/gpt-image-2",
                     "black-forest-labs/flux-3-image"
                 ],
