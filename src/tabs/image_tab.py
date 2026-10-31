@@ -34,27 +34,26 @@ def render_image_tab():
                 
             if render_clicked or feed_clicked:
                 if not img_prompt.strip():
-                    st.warning("Awaiting creative layout parameters...")
+                    st.warning("⚠️ Please provide a layout prompt description first.")
                 else:
                     with st.spinner("Compiling image data stream from OpenRouter..."):
                         try:
-                            # Generate and store raw data bytes directly into application memory
-                            img_bytes = media_service.generate_image(img_prompt, image_model)
-                            st.session_state["last_generated_img_bytes"] = img_bytes
+                            # Fetch and store the clean asset web URL string directly
+                            url = media_service.generate_image(img_prompt, image_model)
+                            st.session_state["last_generated_img_url"] = url
                             st.success("Asset generation sequence complete!")
                         except Exception as e:
                             st.error(f"Image System Error: {str(e)}")
                         
         with col_r:
             st.write("#### Asset Visual Canvas")
-            if "last_generated_img_bytes" in st.session_state:
-                st.image(st.session_state["last_generated_img_bytes"], caption="Active Visual Track Frame")
+            if "last_generated_img_url" in st.session_state:
+                st.image(st.session_state["last_generated_img_url"], caption="Active Visual Track Frame")
                 
                 if feed_clicked:
-                    # Transform raw bytes locally to embed directly as viewable inline Markdown
-                    b64_img = base64.b64encode(st.session_state["last_generated_img_bytes"]).decode("utf-8")
-                    st.session_state.document_draft += f"\n\n![Generated Graphic](data:image/png;base64,{b64_img})\n"
-                    st.toast("Embedded baseline data image asset directly into Document Editor Tab!")
+                    # Append the live hosted image URL straight into the primary text matrix markdown string
+                    st.session_state.document_draft += f"\n\n![Generated Graphic]({st.session_state['last_generated_img_url']})\n"
+                    st.toast("Embedded asset URL link directly into Document Editor Tab!")
             else:
                 st.info("Awaiting creative visual mapping generations...")
 
