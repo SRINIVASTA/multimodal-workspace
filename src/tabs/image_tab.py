@@ -49,6 +49,8 @@ def render_image_tab():
                 "Select Dynamic Generation Engine:",
                 [
                     "openrouter/free",
+                    "google/gemini-2.5-flash-image",
+                    "google/gemini-3.1-flash-lite-image",
                     "openai/gpt-image-2",
                     "black-forest-labs/flux-3-image"
                 ],
