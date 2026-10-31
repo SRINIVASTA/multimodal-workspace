@@ -8,7 +8,7 @@ class MediaService:
     def generate_image(self, prompt: str, model: str) -> str:
         """
         Generates images by targeting OpenRouter's official /api/v1/images route.
-        Parses and returns the absolute hosted image asset URL string safely.
+        Implements self-healing schema key detection for varying provider layouts.
         """
         if not settings.OPENROUTER_API_KEY:
             raise ValueError("Authentication credentials missing: OPENROUTER_API_KEY is unset.")
@@ -31,12 +31,17 @@ class MediaService:
         if not response.ok:
             raise RuntimeError(f"OpenRouter Image API Error {response.status_code}: {response.text}")
             
-        # PRODUCTION FIX: Correctly targeting index 0 of the data array wrapper
         response_json = response.json()
         
-        if 'data' in response_json and len(response_json['data']) > 0:
+        # SELF-HEALING PAYLOAD CHECKER
+        # Method 1: Check standard data list array structure
+        if 'data' in response_json and isinstance(response_json['data'], list) and len(response_json['data']) > 0:
             return response_json['data'][0]['url']
-        raise KeyError(f"Unexpected JSON structure returned from OpenRouter: {response_json}")
+        # Method 2: Check object map format directly
+        elif 'data' in response_json and isinstance(response_json['data'], dict) and 'url' in response_json['data']:
+            return response_json['data']['url']
+            
+        raise KeyError(f"Failed to identify target image link parameter fields in payload: {response_json}")
 
     def text_to_speech(self, text: str, model: str) -> bytes:
         """Synthesizes high-fidelity voice track data streams from the clean speech node."""
