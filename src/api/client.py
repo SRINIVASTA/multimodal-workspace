@@ -10,17 +10,21 @@ class OpenRouterClient:
         if not settings.OPENROUTER_API_KEY:
             raise ValueError("Authentication credentials missing: OPENROUTER_API_KEY is unset.")
         
-        # Absolute, runtime enforcement of the /api/v1 API directory boundary path
+        # Strip trailing slashes safely
         base_clean = settings.BASE_URL.strip("/")
-        if not base_clean.endswith("api/v1"):
-            base_route = f"{base_clean}/api/v1"
-        else:
-            base_route = base_clean
-
-        clean_endpoint = endpoint.lstrip("/")
-        full_target_url = f"{base_route}/{clean_endpoint}"
         
-        # Dispatches standard POST requests to OpenRouter
+        # Detect if it's an image generation payload route
+        if "images/generations" in endpoint:
+            # Force target routing straight to the standard v1 images structure
+            full_target_url = "https://openrouter.ai/api/v1/images/generations"
+        else:
+            if not base_clean.endswith("api/v1"):
+                base_route = f"{base_clean}/api/v1"
+            else:
+                base_route = base_clean
+            clean_endpoint = endpoint.lstrip("/")
+            full_target_url = f"{base_route}/{clean_endpoint}"
+        
         response = requests.post(
             url=full_target_url,
             headers=settings.headers,
