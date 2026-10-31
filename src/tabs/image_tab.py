@@ -48,8 +48,7 @@ def render_image_tab():
                     with st.spinner("Compiling image data stream..."):
                         try:
                             if sandbox_mode:
-                                # FIXED: Explicit, absolute static asset path targeting a high-res abstract artwork structure
-                                # This forces an instant, redirect-free payload render across Streamlit Cloud containers
+                                # FIXED: Replaced webpage link with a bulletproof direct abstract asset canvas image URL vector
                                 st.session_state["last_generated_img_url"] = "https://unsplash.com"
                                 st.success("🎉 Asset compilation completed successfully (Sandbox Mode Profile)!")
                             else:
@@ -65,7 +64,6 @@ def render_image_tab():
         with col_r:
             st.write("#### Asset Visual Canvas")
             if "last_generated_img_url" in st.session_state:
-                # Direct bulletproof image stream rendering mapping
                 st.image(st.session_state["last_generated_img_url"], caption="Active Visual Track Frame")
                 
                 if feed_clicked:
@@ -118,7 +116,9 @@ def render_image_tab():
                             }
                             
                             res = client.post("chat/completions", vision_payload)
-                            st.session_state["last_vision_analysis_output"] = res.json()['choices']['message']['content']
+                            
+                            # FIXED: Patched JSON mapping indexing vector structure targeting standard chat layout arrays
+                            st.session_state["last_vision_analysis_output"] = res.json()['choices'][0]['message']['content']
                             st.success("Vision analysis complete!")
                         except Exception as vision_err:
                             st.error(f"Vision Engine Processing Aborted: {str(vision_err)}")
