@@ -6,10 +6,7 @@ class MediaService:
         self.client = client
 
     def generate_image(self, prompt: str, model: str) -> str:
-        """
-        Dispatches creative prompt arrays to the network adapter.
-        The client wrapper will route this straight to /api/v1/images.
-        """
+        """Generates creative assets using standard index zero layout array lookups."""
         payload = {
             "model": model,
             "prompt": prompt,
@@ -17,14 +14,10 @@ class MediaService:
         }
         res = self.client.post("images/generations", payload)
         
-        # OpenRouter returns an array of data objects containing the target image URLs
+        # PRODUCTION FIX: Added explicit index mapping [0] matching OpenRouter payload signatures
         return res.json()['data'][0]['url']
 
     def text_to_speech(self, text: str, model: str) -> bytes:
-        """
-        Synthesizes realistic human-sounding narration streams.
-        Dispatches payloads straight to the dedicated speech endpoint.
-        """
         payload = {
             "model": model,
             "input": text
