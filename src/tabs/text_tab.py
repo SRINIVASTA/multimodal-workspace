@@ -17,7 +17,6 @@ def render_text_tab():
     with col_in:
         st.write("#### Research Parameters")
         
-        # Dynamic Text Model Selection Matrix
         text_model = st.selectbox(
             "Select Dynamic Text Engine:",
             [
@@ -31,6 +30,13 @@ def render_text_tab():
         )
         
         topic = st.text_input("Target Analysis Topic:", key="text_tab_topic_input")
+        
+        # FOLDED CODE PROMPTS: Pre-built templates inside the code workspace
+        with st.expander("💡 View Sample Research Prompts"):
+            st.code("Comprehensive analysis of global microchip supply chains in 2026", language="text")
+            st.code("Technical deep-dive on decentralized edge computing security matrix solutions", language="text")
+            st.code("Corporate financial impact report detailing next-gen automated logistics frameworks", language="text")
+
         if st.button("Query Dynamic Web Engine", use_container_width=True):
             if not topic.strip():
                 st.warning("Please enter a research topic first.")
@@ -38,7 +44,6 @@ def render_text_tab():
                 with st.spinner("Processing deep technical analysis..."):
                     try:
                         st.session_state.document_draft = text_service.generate_document(topic, model=text_model)
-                        st.slots = {} # Reset runtime caching slots safely
                         st.rerun()
                     except Exception as e:
                         st.error(f"Text Generation Exception: {str(e)}")
@@ -63,13 +68,11 @@ def render_text_tab():
                 use_container_width=True
             )
         with col_down_pdf:
-            # FIX: Real ReportLab Compilation Engine using memory byte buffers
             try:
                 pdf_buffer = io.BytesIO()
                 doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, rightMargin=54, leftMargin=54, topMargin=54, bottomMargin=54)
                 styles = getSampleStyleSheet()
                 
-                # Custom body layout flow configuration
                 body_style = ParagraphStyle(
                     'PDFBody',
                     parent=styles['Normal'],
@@ -78,7 +81,6 @@ def render_text_tab():
                 )
                 
                 story = []
-                # Basic line-break structural processing loop
                 for line in st.session_state.document_draft.split('\n'):
                     if line.strip():
                         story.append(Paragraph(line, body_style))
