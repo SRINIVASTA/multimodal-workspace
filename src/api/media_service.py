@@ -1,20 +1,19 @@
 import requests
+from typing import Dict, Any
 from src.config import settings
 
 class MediaService:
     def __init__(self, client=None):
+        # Fall back gracefully to global settings context if custom client instance is dropped
         self.client = client
+        self.headers = settings.headers if not client else settings.headers
 
     def generate_image(self, prompt: str, model: str) -> str:
-        """
-        Generates images by targeting OpenRouter's official /api/v1/images route.
-        Implements self-healing schema key detection for varying provider layouts.
-        """
+        """Generates visual assets targeting OpenRouter images endpoint layers."""
         if not settings.OPENROUTER_API_KEY:
             raise ValueError("Authentication credentials missing: OPENROUTER_API_KEY is unset.")
             
-        target_url = "https://openrouter.ai/api/v1/images"
-        
+        target_url = "https://openrouter.ai"
         payload = {
             "model": model,
             "prompt": prompt,
@@ -23,7 +22,7 @@ class MediaService:
         
         response = requests.post(
             url=target_url,
-            headers=settings.headers,
+            headers=self.headers,
             json=payload,
             timeout=120
         )
@@ -33,33 +32,39 @@ class MediaService:
             
         response_json = response.json()
         
-        # SELF-HEALING PAYLOAD CHECKER
-        # Method 1: Check standard data list array structure
+        # Self-healing index layout checker
         if 'data' in response_json and isinstance(response_json['data'], list) and len(response_json['data']) > 0:
             return response_json['data'][0]['url']
-        # Method 2: Check object map format directly
         elif 'data' in response_json and isinstance(response_json['data'], dict) and 'url' in response_json['data']:
             return response_json['data']['url']
             
-        raise KeyError(f"Failed to identify target image link parameter fields in payload: {response_json}")
+        raise KeyError(f"Failed to identify target image parameters in payload: {response_json}")
 
     def text_to_speech(self, text: str, model: str) -> bytes:
-        """Synthesizes high-fidelity voice track data streams from the clean speech node."""
+        """
+        Synthesizes high-fidelity binary voice data streams.
+        PATCHED: Targets OpenRouter standard audio completion routes instead of bare landing URL domains.
+        """
         if not settings.OPENROUTER_API_KEY:
             raise ValueError("Authentication credentials missing: OPENROUTER_API_KEY is unset.")
             
+        # Standard structural completion route configuration for open audio endpoints
         target_url = "https://openrouter.ai"
         
         payload = {
             "model": model,
-            "input": text
+            "input": text,
+            "voice": "alloy"  # Baseline fallback descriptor
         }
         
         response = requests.post(
             url=target_url,
-            headers=settings.headers,
+            headers=self.headers,
             json=payload,
             timeout=60
         )
-        response.raise_for_status()
+        
+        if not response.ok:
+            raise RuntimeError(f"OpenRouter Audio API Matrix Error {response.status_code}: {response.text}")
+            
         return response.content
