@@ -14,9 +14,6 @@ def render_image_tab():
     
     tab_gen, tab_vision = st.tabs(["✨ Text-To-Image Engine", "👁️ Vision & File Analysis"])
     
-    # ---------------------------------------------------------
-    # SUB-TAB 1: TEXT TO IMAGE ENGINE
-    # ---------------------------------------------------------
     with tab_gen:
         col_l, col_r = st.columns(2)
         with col_l:
@@ -31,9 +28,26 @@ def render_image_tab():
                 ],
                 key="image_tab_engine_selector"
             )
-            img_prompt = st.text_area("Graphic Specifications Layout Prompt:", key="image_tab_raw_prompt_input")
             
-            sandbox_mode = st.toggle("Enable Local Hackathon Sandbox Mode", value=True, help="Simulates output canvas if API keys lack paid credits.")
+            # FOLDED CODE PROMPTS: Contextually aware of data memory frames
+            with st.expander("📊 Option 1: Automatic Metric Data Binding"):
+                if "data_frame" in st.session_state:
+                    regions = ", ".join(st.session_state.data_frame["Region"].tolist())
+                    sales = ", ".join([f"${val:,}" for val in st.session_state.data_frame["Sales"].tolist()])
+                    
+                    bound_prompt = f"Vector infographic layout displaying performance metrics for regions: {regions}. Left side charts map total metrics: {sales}. Flat corporate modern design style."
+                    st.code(bound_prompt, language="text")
+                else:
+                    st.info("No active data frames identified.")
+
+            with st.expander("📄 Option 2: Custom ReportLab PDF Image Constraints"):
+                st.code("A professional engineering document header graphic template asset. Styled for landscape A4 margins. Clean geometric trace lines on an ultra-light gray backdrop.", language="text")
+
+            with st.expander("🏢 Option 3: Dark-Mode Architectural Theme"):
+                st.code("Hyper-realistic architectural concept rendering of a towering corporate headquarters at night. Glass cladding, deep black metal panels, sharp orange aesthetic glow layers.", language="text")
+
+            img_prompt = st.text_area("Graphic Specifications Layout Prompt:", key="image_tab_raw_prompt_input")
+            sandbox_mode = st.toggle("Enable Local Hackathon Sandbox Mode", value=True)
             
             col_b1, col_b2 = st.columns(2)
             with col_b1:
@@ -48,7 +62,6 @@ def render_image_tab():
                     with st.spinner("Compiling image data stream..."):
                         try:
                             if sandbox_mode:
-                                # FIXED: Replaced webpage link with a bulletproof direct abstract asset canvas image URL vector
                                 st.session_state["last_generated_img_url"] = "https://unsplash.com"
                                 st.success("🎉 Asset compilation completed successfully (Sandbox Mode Profile)!")
                             else:
@@ -57,7 +70,7 @@ def render_image_tab():
                                 st.success("Asset generation sequence complete!")
                         except Exception as e:
                             if "402" in str(e):
-                                st.error("❌ OpenRouter Account lacks credits ($0.00 Balance). Please activate 'Local Hackathon Sandbox Mode' above to proceed with the asset presentation workflow.")
+                                st.error("❌ OpenRouter Account lacks credits. Activate Sandbox Mode above to simulate.")
                             else:
                                 st.error(f"Image System Error: {str(e)}")
                         
@@ -65,16 +78,12 @@ def render_image_tab():
             st.write("#### Asset Visual Canvas")
             if "last_generated_img_url" in st.session_state:
                 st.image(st.session_state["last_generated_img_url"], caption="Active Visual Track Frame")
-                
                 if feed_clicked:
                     st.session_state.document_draft += f"\n\n![Generated Graphic]({st.session_state['last_generated_img_url']})\n"
                     st.toast("Embedded asset URL link directly into Document Editor Tab!")
             else:
                 st.info("Awaiting creative visual mapping generations...")
 
-    # ---------------------------------------------------------
-    # SUB-TAB 2: IMAGE FILE UPLOAD & VISION ANALYSIS HUB
-    # ---------------------------------------------------------
     with tab_vision:
         col_v_l, col_v_r = st.columns(2)
         with col_v_l:
@@ -116,8 +125,6 @@ def render_image_tab():
                             }
                             
                             res = client.post("chat/completions", vision_payload)
-                            
-                            # FIXED: Patched JSON mapping indexing vector structure targeting standard chat layout arrays
                             st.session_state["last_vision_analysis_output"] = res.json()['choices'][0]['message']['content']
                             st.success("Vision analysis complete!")
                         except Exception as vision_err:
@@ -131,7 +138,6 @@ def render_image_tab():
             if "last_vision_analysis_output" in st.session_state:
                 st.write("#### 📝 Extracted Analysis Logs")
                 st.markdown(st.session_state["last_vision_analysis_output"])
-                
                 if st.button("🔗 Append Analysis to Document Tab", use_container_width=True):
                     st.session_state.document_draft += f"\n\n### Image Analysis Report\n{st.session_state['last_vision_analysis_output']}\n"
                     st.toast("Analysis text successfully appended to Tab 1 Document Editor!")
