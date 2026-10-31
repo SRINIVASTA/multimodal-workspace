@@ -13,7 +13,6 @@ def render_image_tab():
     with col_l:
         st.write("#### Design Configuration Canvas")
         
-        # Dynamic Image Generation Model Matrix
         image_model = st.selectbox(
             "Select Dynamic Generation Engine:",
             [
@@ -33,16 +32,20 @@ def render_image_tab():
             feed_clicked = st.button("🔗 Inject to Doc Canvas", use_container_width=True)
             
         if render_clicked or feed_clicked:
-            with st.spinner("Processing generative graphic assets..."):
-                try:
-                    url = media_service.generate_image(img_prompt, image_model)
-                    st.session_state["last_generated_img_url"] = url
-                    
-                    if feed_clicked:
-                        st.session_state.document_draft += f"\n\n![Generated Graphic]({url})\n"
-                        st.toast("Image canvas link cleanly injected into Tab 1 database!")
-                except Exception as e:
-                    st.error(f"Image System Error: {str(e)}")
+            # DEFENSIVE VALIDATION LAYER: Catch blank fields locally
+            if not img_prompt.strip():
+                st.warning("⚠️ Request Aborted: Please provide a description in the Graphic Specifications Layout Prompt field first.")
+            else:
+                with st.spinner("Processing generative graphic assets..."):
+                    try:
+                        url = media_service.generate_image(img_prompt, image_model)
+                        st.session_state["last_generated_img_url"] = url
+                        
+                        if feed_clicked:
+                            st.session_state.document_draft += f"\n\n![Generated Graphic]({url})\n"
+                            st.toast("Image canvas link cleanly injected into Tab 1 database!")
+                    except Exception as e:
+                        st.error(f"Image System Error: {str(e)}")
                     
     with col_r:
         st.write("#### Asset Visual Canvas")
