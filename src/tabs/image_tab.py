@@ -2,28 +2,25 @@ import streamlit as st
 import base64
 import io
 import textwrap
-from PIL import Image, ImageDraw, ImageFont
+import requests
+from PIL import Image, ImageDraw
 
 def get_sandbox_placeholder_image(prompt_text: str):
     """Generates a high-quality local placeholder canvas and burns the prompt text inside it."""
-    # Create dark slate blueprint slate matrix background frame (800x450 landscape)
     img = Image.new('RGB', (800, 450), color='#1E293B') 
     d = ImageDraw.Draw(img)
     
-    # Draw boundary alignment wireframes 
     d.rectangle([(20, 20), (780, 430)], outline='#38BDF8', width=3) 
     d.line([(20, 20), (780, 430)], fill='#334155', width=1)
     d.line([(20, 430), (780, 20)], fill='#334155', width=1)
     
-    # Overlay context tracking metrics text layers
     d.text((40, 40), "🚧 LOCAL HACKATHON SANDBOX MODE PREVIEW", fill='#38BDF8')
     
-    # Text-wrapping layout logic block to prevent line truncation dropouts
     cleaned_prompt = prompt_text.strip() if prompt_text.strip() else "System idle. Awaiting configuration prompts..."
     wrapped_lines = textwrap.wrap(cleaned_prompt, width=65)
     
     y_offset = 120
-    for line in wrapped_lines[:10]: # Safely cap heights to fit baseline boundaries
+    for line in wrapped_lines[:10]:
         d.text((50, y_offset), line, fill='#94A3B8')
         y_offset += 25
         
@@ -44,6 +41,9 @@ def render_image_tab():
     
     tab_gen, tab_vision = st.tabs(["✨ Text-To-Image Engine", "👁️ Vision & File Analysis"])
     
+    # ---------------------------------------------------------
+    # SUB-TAB 1: TEXT TO IMAGE ENGINE
+    # ---------------------------------------------------------
     with tab_gen:
         col_l, col_r = st.columns(2)
         with col_l:
@@ -65,14 +65,9 @@ def render_image_tab():
                     sales = ", ".join([f"${val:,}" for val in st.session_state.data_frame["Sales"].tolist()])
                     bound_prompt = f"Vector infographic layout displaying performance metrics for regions: {regions}. Left side charts map total metrics: {sales}. Flat corporate modern design style."
                     st.code(bound_prompt, language="text")
-                else:
-                    st.info("No active data frames identified.")
 
             with st.expander("📄 Option 2: Custom ReportLab PDF Image Constraints"):
                 st.code("A professional engineering document header graphic template asset. Styled for landscape A4 margins. Clean geometric trace lines on an ultra-light gray backdrop.", language="text")
-
-            with st.expander("🏢 Option 3: Dark-Mode Architectural Theme"):
-                st.code("Hyper-realistic architectural concept rendering of a towering corporate headquarters at night. Glass cladding, deep black metal panels, sharp orange aesthetic glow layers.", language="text")
 
             img_prompt = st.text_area("Graphic Specifications Layout Prompt:", key="image_tab_raw_prompt_input")
             sandbox_mode = st.toggle("Enable Local Hackathon Sandbox Mode", value=True)
@@ -90,7 +85,6 @@ def render_image_tab():
                     with st.spinner("Compiling image data stream..."):
                         try:
                             if sandbox_mode:
-                                # FIXED: Passes prompt data down dynamically into the image canvas burner matrix
                                 st.session_state["last_generated_img_data"] = get_sandbox_placeholder_image(img_prompt)
                                 st.session_state["last_generated_img_url"] = "https://placeholder.com"
                                 st.success("🎉 Asset compilation completed successfully (Sandbox Mode Profile)!")
@@ -101,16 +95,13 @@ def render_image_tab():
                                     del st.session_state["last_generated_img_data"]
                                 st.success("Asset generation sequence complete!")
                         except Exception as e:
-                            if "402" in str(e):
-                                st.error("❌ OpenRouter Account lacks credits. Activate Sandbox Mode above to simulate.")
-                            else:
-                                st.error(f"Image System Error: {str(e)}")
+                            st.error(f"Image System Error: {str(e)}")
                         
         with col_r:
             st.write("#### Asset Visual Canvas")
             if "last_generated_img_data" in st.session_state:
                 st.image(st.session_state["last_generated_img_data"], caption="Active Visual Track Frame (Local Sandbox)", use_container_width=True)
-            elif "last_generated_img_url" in st.session_state:
+            elif "last_generated_img_url" in st.session_state and st.session_state["last_generated_img_url"] != "https://placeholder.com":
                 st.image(st.session_state["last_generated_img_url"], caption="Active Visual Track Frame (Live Remote API)", use_container_width=True)
             else:
                 st.info("Awaiting creative visual mapping generations...")
@@ -118,7 +109,94 @@ def render_image_tab():
             if feed_clicked and "last_generated_img_url" in st.session_state:
                 st.session_state.document_draft += f"\n\n![Generated Graphic]({st.session_state['last_generated_img_url']})\n"
                 st.toast("Embedded asset URL link directly into Document Editor Tab!")
-
+    # ---------------------------------------------------------
+    # SUB-TAB 2: IMAGE FILE UPLOAD & VISION ANALYSIS HUB
+    # ---------------------------------------------------------
     with tab_vision:
-        # Keeping vision system analytics structures bound securely...
-        pass
+        col_v_l, col_v_r = st.columns(2)
+        with col_v_l:
+            st.write("#### Select Source Context")
+            
+            source_mode = st.radio(
+                "Vision Analysis Image Target:",
+                ["Use active generated studio graphic", "Upload fresh image file from disk"],
+                horizontal=True,
+                key="vision_source_mode_selector"
+            )
+            
+            file_bytes = None
+            mime_type = "image/png"
+            
+            if source_mode == "Upload fresh image file from disk":
+                uploaded_file = st.file_uploader("Choose an image file...", type=["jpg", "jpeg", "png"], key="vision_uploader")
+                if uploaded_file is not None:
+                    file_bytes = uploaded_file.read()
+                    mime_type = uploaded_file.type
+            else:
+                if "last_generated_img_data" in st.session_state:
+                    file_bytes = st.session_state["last_generated_img_data"]
+                    st.info("🔄 Automatically binding active Local Sandbox image stream context.")
+                elif "last_generated_img_url" in st.session_state and st.session_state["last_generated_img_url"] != "https://placeholder.com":
+                    try:
+                        res = requests.get(st.session_state["last_generated_img_url"], timeout=15)
+                        if res.ok:
+                            file_bytes = res.content
+                            st.info("🔄 Automatically fetched and bound active Live API graphic track.")
+                    except Exception:
+                        pass
+                
+                if file_bytes is None:
+                    st.warning("⚠️ No generated graphic active in the studio canvas yet. Run text-to-image synthesis first.")
+
+            vision_model = st.selectbox(
+                "Select Vision Model Engine:",
+                ["google/gemini-2.5-flash", "openai/gpt-4o-mini"],
+                key="vision_model_selector"
+            )
+            
+            vision_prompt = st.text_area("Vision Analysis Directive Input:", value="Analyze this image layout matrix in detail and extract key structural insights.", key="vision_prompt_input")
+            
+            if st.button("🔬 Execute Multimodal Vision Analysis", use_container_width=True):
+                if file_bytes is None:
+                    st.error("❌ Execution aborted: No valid source pixels available.")
+                else:
+                    with st.spinner("Analyzing image array context..."):
+                        try:
+                            base64_image = base64.b64encode(file_bytes).decode("utf-8")
+                            
+                            vision_payload = {
+                                "model": vision_model,
+                                "messages": [
+                                    {
+                                        "role": "user",
+                                        "content": [
+                                            {"type": "text", "text": vision_prompt},
+                                            {
+                                                "type": "image_url",
+                                                "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "max_tokens": 1000
+                            }
+                            
+                            res = client.post("chat/completions", vision_payload)
+                            st.session_state["last_vision_analysis_output"] = res.json()['choices'][0]['message']['content']
+                            st.success("Vision analysis complete!")
+                        except Exception as vision_err:
+                            st.error(f"Vision Engine Processing Aborted: {str(vision_err)}")
+                            
+        with col_v_r:
+            st.write("#### Analysis Preview & Output Screen")
+            if source_mode == "Upload fresh image file from disk" and uploaded_file is not None:
+                st.image(file_bytes, use_container_width=True, caption="Uploaded File Preview")
+            elif source_mode == "Use active generated studio graphic" and file_bytes is not None:
+                st.image(file_bytes, use_container_width=True, caption="Active Studio Canvas Preview")
+                
+            if "last_vision_analysis_output" in st.session_state:
+                st.write("#### 📝 Extracted Analysis Logs")
+                st.markdown(st.session_state["last_vision_analysis_output"])
+                if st.button("🔗 Append Analysis to Document Tab", use_container_width=True):
+                    st.session_state.document_draft += f"\n\n### Image Analysis Report\n{st.session_state['last_vision_analysis_output']}\n"
+                    st.toast("Analysis text successfully appended to Tab 1 Document Editor!")
