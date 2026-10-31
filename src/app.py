@@ -2,7 +2,6 @@ import sys
 import os
 
 # Dynamically inject the root repository path into Python's search matrix
-# This prevents the ModuleNotFoundError on Streamlit Cloud deployment architectures
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
@@ -16,10 +15,6 @@ SessionStateManager.initialize()
 st.title("⚙️ Enterprise Multi-Modal Studio")
 
 def initialize_core_services():
-    """
-    Initializes core engine client handlers dynamically on each run.
-    Bypasses structural caching layers entirely to clear out stale zombie URLs.
-    """
     from src.api.client import OpenRouterClient
     from src.api.text_service import TextService
     from src.api.media_service import MediaService
@@ -30,7 +25,6 @@ def initialize_core_services():
         "media": MediaService(core_client)
     }
 
-# Read fresh live service instances straight from disk
 services = initialize_core_services()
 
 if not settings.OPENROUTER_API_KEY:
@@ -43,11 +37,23 @@ with tab_doc:
     col_l, col_r = st.columns(2)
     with col_l:
         st.subheader("Deep Research Input")
+        
+        # DYNAMIC FIX: Choose text generation model directly from the UI layout
+        text_model = st.selectbox(
+            "Select Text AI Engine:",
+            [
+                "meta-llama/llama-3-8b-instruct:free",
+                "google/gemini-2.5-flash",
+                "openai/gpt-4o-mini"
+            ]
+        )
+        
         topic = st.text_input("Target Analysis Topic:")
         if st.button("Query Web Engine"):
             with st.spinner("Executing real-time technical web crawl analysis..."):
                 try:
-                    st.session_state.document_draft = services["text"].generate_document(topic)
+                    # Dynamically passing the selected model down into the service layer
+                    st.session_state.document_draft = services["text"].generate_document(topic, model=text_model)
                     st.rerun()
                 except Exception as e:
                     st.error("❌ OpenRouter Request Rejected:")
