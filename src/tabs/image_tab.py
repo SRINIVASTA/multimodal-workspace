@@ -22,13 +22,13 @@ def render_image_tab():
         with col_l:
             st.write("#### Design Configuration Canvas")
             
-            # FIXED: Updated string names to match exact active model paths
+            # ENTERPRISE ALIGNMENT: Mapping OpenRouter's exact active image generation models
             image_model = st.selectbox(
                 "Select Dynamic Generation Engine:",
                 [
-                    "openai/dall-e-3",
-                    "black-forest-labs/flux-schnell",
-                    "stabilityai/stable-diffusion-3-medium"
+                    "openai/gpt-image-2",
+                    "google/nano-banana-2",
+                    "black-forest-labs/flux-3-image"
                 ],
                 key="image_tab_engine_selector"
             )
