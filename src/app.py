@@ -126,9 +126,8 @@ with tab_doc:
                     except Exception as pdf_err:
                         st.error(f"PDF Compiler Error: {str(pdf_err)}")
 
-# 2. ISOLATED WORKSPACE MANAGEMENT BLOCK VIA ST.FRAGMENT
-@st.fragment(run_every=2.0)
-def render_media_studio():
+# 2. FIXED LAYER: We draw the structure inside Tab 2 explicitly to guarantee visibility
+with tab_media:
     col_img, col_aud = st.columns(2)
     
     with col_img:
@@ -137,7 +136,6 @@ def render_media_studio():
         img_prompt = st.text_area("Graphic Specifications Layout Prompt:")
         
         col_img_btn1, col_img_btn2 = st.columns(2)
-        
         with col_img_btn1:
             render_clicked = st.button("Render Canvas Asset", use_container_width=True)
         with col_img_btn2:
@@ -148,24 +146,19 @@ def render_media_studio():
                 try:
                     url = services["media"].generate_image(img_prompt, img_model)
                     st.image(url, caption="Generated Asset Frame")
-                    
                     if feed_clicked:
-                        # Append image into the active workspace editor context
                         st.session_state.document_draft += f"\n\n![Generated Marketing Graphic]({url})\n"
-                        st.success("Image asset successfully injected into Advanced Document Canvas!")
+                        st.success("Asset injected! Refresh tab 1 to view line items.")
                 except Exception as e:
-                    st.error("❌ Image Request Failed:")
-                    st.info(str(e))
+                    st.error(f"❌ Image Engine Request Failed: {str(e)}")
 
     with col_aud:
         st.subheader("Audio Synthesis & Video Production")
-        
-        # Audio Integration Node Block
         st.write("#### 🎵 AssemblyAI Text-To-Speech Interface")
+        
         if st.button("🗣️ Read Document Aloud Automatically", use_container_width=True):
             with st.spinner("Synthesizing narration from Document Canvas text..."):
                 try:
-                    # Clip document sample if text exceeds system buffer limits
                     narration_text = st.session_state.document_draft[:2000]
                     audio_bytes = services["media"].text_to_speech(narration_text, model="assemblyai/tts-1")
                     st.audio(audio_bytes, format="audio/mp3")
@@ -174,19 +167,18 @@ def render_media_studio():
                     st.error(f"TTS Connection Exception: {str(audio_err)}")
         
         st.write("---")
-        
-        # Asynchronous Video Pipeline Worker System
         st.write("#### 🎬 Asynchronous Video Production Pipeline")
         st.info("Compile synthetic commercial structures inside decoupled background tasks.")
         
+        # Isolated runtime check inside a safe block for background threading tracking
         task_key = "commercial_render_prod"
         status_data = VideoCompilationWorker.get_task_status(task_key)
         
         if status_data["status"] == "NOT_FOUND":
             if st.button("Launch Asynchronous Media Render Workflow", use_container_width=True):
-                # Seed system workspace directory mocks
-                with open("temp_broll.mp4", "wb") as f: f.write(b"Mock Video Data")
-                with open("temp_voiceover.mp3", "wb") as f: f.write(b"Mock Audio Data")
+                # Ensure placeholder streams are present on server
+                with open("temp_broll.mp4", "wb") as f: f.write(b"Placeholder Video Stream")
+                with open("temp_voiceover.mp3", "wb") as f: f.write(b"Placeholder Audio Stream")
                 
                 VideoCompilationWorker.start_async_compilation(
                     task_id=task_key,
@@ -197,11 +189,10 @@ def render_media_studio():
                 st.rerun()
                 
         elif status_data["status"] == "PROCESSING":
-            st.warning(f"⏳ Background Thread Rendering: Processing Action at {status_data['progress']}%...")
-            st.progress(status_data["progress"] / 100)
+            st.warning("⏳ Background Thread Rendering active...")
             
         elif status_data["status"] == "SUCCESS":
-            st.success("🎉 Background execution worker pipeline finished compiling media assets successfully!")
+            st.success("🎉 Background worker pipeline finished compiling media assets!")
             st.video(status_data["file"])
             if st.button("Reset Compilation Window", use_container_width=True):
                 VideoCompilationWorker._tasks.pop(task_key, None)
@@ -212,4 +203,3 @@ def render_media_studio():
             if st.button("Retry Thread Operations", use_container_width=True):
                 VideoCompilationWorker._tasks.pop(task_key, None)
                 st.rerun()
-
