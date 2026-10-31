@@ -31,7 +31,6 @@ def get_sandbox_placeholder_image(prompt_text: str):
 def render_image_tab():
     st.subheader("🎨 Graphic Design & Vision Analysis Studio")
     
-    # FIXED: Consumes UnifiedAIService to eliminate import layout name crashes
     from src.api.media_service import UnifiedAIService
     ai_service = UnifiedAIService()
     
@@ -45,11 +44,12 @@ def render_image_tab():
         with col_l:
             st.write("#### Design Configuration Canvas")
             
+            # FIXED: Injected free tier models to run prompts without credits
             image_model = st.selectbox(
                 "Select Dynamic Generation Engine:",
                 [
+                    "black-forest-labs/flux-1-schnell:free",
                     "openai/gpt-image-2",
-                    "openai/gpt-image-2.5-sunburst",
                     "black-forest-labs/flux-3-image"
                 ],
                 key="image_tab_engine_selector"
@@ -85,7 +85,6 @@ def render_image_tab():
                                 st.session_state["last_generated_img_url"] = "https://placeholder.com"
                                 st.success("🎉 Asset compilation completed successfully (Sandbox Mode Profile)!")
                             else:
-                                # FIXED: Utilizes unified service generation syntax cleanly
                                 url = ai_service.generate_image(img_prompt, image_model)
                                 st.session_state["last_generated_img_url"] = url
                                 if "last_generated_img_data" in st.session_state:
@@ -178,6 +177,8 @@ def render_image_tab():
                                 "max_tokens": 1000
                             }
                             
+                            from src.api.client import OpenRouterClient
+                            client = OpenRouterClient()
                             res = client.post("chat/completions", vision_payload)
                             st.session_state["last_vision_analysis_output"] = res.json()['choices'][0]['message']['content']
                             st.success("Vision analysis complete!")
