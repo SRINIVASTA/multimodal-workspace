@@ -31,13 +31,9 @@ def get_sandbox_placeholder_image(prompt_text: str):
 def render_image_tab():
     st.subheader("🎨 Graphic Design & Vision Analysis Studio")
     
-    from src.api.client import OpenRouterClient
-    from src.api.media_service import MediaService
-    from src.api.text_service import TextService
-    
-    client = OpenRouterClient()
-    media_service = MediaService(client)
-    text_service = TextService(client)
+    # FIXED: Consumes UnifiedAIService to eliminate import layout name crashes
+    from src.api.media_service import UnifiedAIService
+    ai_service = UnifiedAIService()
     
     tab_gen, tab_vision = st.tabs(["✨ Text-To-Image Engine", "👁️ Vision & File Analysis"])
     
@@ -89,7 +85,8 @@ def render_image_tab():
                                 st.session_state["last_generated_img_url"] = "https://placeholder.com"
                                 st.success("🎉 Asset compilation completed successfully (Sandbox Mode Profile)!")
                             else:
-                                url = media_service.generate_image(img_prompt, image_model)
+                                # FIXED: Utilizes unified service generation syntax cleanly
+                                url = ai_service.generate_image(img_prompt, image_model)
                                 st.session_state["last_generated_img_url"] = url
                                 if "last_generated_img_data" in st.session_state:
                                     del st.session_state["last_generated_img_data"]
