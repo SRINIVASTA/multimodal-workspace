@@ -7,16 +7,12 @@ def render_audio_tab():
     from src.api.media_service import UnifiedAIService
     ai_service = UnifiedAIService()
     
-    # Dynamic Voice Engine Selection Matrix
+    # Dynamic Voice Engine Selection Matrix (Free Only)
     audio_model = st.selectbox(
         "Select Dynamic Speech/Voice Engine:",
         [
-            "assemblyai/tts-1",
-            "openai/tts-1-hd",
-            "elevenlabs/rachel",  # <--- Added missing comma here
-            "openai/gpt-4o-mini-tts-2025-12-15",
-            "openai/gpt-4o-audio-preview",
-            "mistralai/voxtral-mini-tts-2603"
+            "deepgram/flux-tts:free",
+            "heygen/heygen-voice-1-turbo:free"
         ],
         key="audio_dynamic_model_selector"
     )
