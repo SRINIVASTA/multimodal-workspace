@@ -70,10 +70,10 @@ def render_audio_tab():
                 st.rerun()
 
     # =========================================================================
-    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Real-time On-Demand Translation
+    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Two-Step Separated Processing Frame
     # =========================================================================
     with tab_stt:
-        st.write("### Transcribe & Real-time Translate Audio Track")
+        st.write("### 📝 Step 1: Audio to Native Text")
         
         uploaded_audio = st.file_uploader(
             "Upload Target Audio Track Frame:", 
@@ -81,7 +81,7 @@ def render_audio_tab():
             key="stt_audio_uploader"
         )
         
-        # Automatic input spoken language fingerprint analysis tracking logic pass
+        # Audio input fingerprint tracker
         detected_lang_label = "Awaiting File Attachment..."
         if uploaded_audio is not None:
             if "last_file_name" not in st.session_state or st.session_state.last_file_name != uploaded_audio.name:
@@ -94,8 +94,7 @@ def render_audio_tab():
                         
                         guessed_code = transcribe_service.detect_audio_language(raw_bytes, det_format)
                         st.session_state.auto_detected_lang = guessed_code
-                        # Flush past transcript items upon dynamic item updates
-                        st.session_state.pop("raw_extracted_transcript", None)
+                        st.session_state.pop("raw_extracted_transcript", None) # Clear previous tracking keys
                     except Exception:
                         st.session_state.auto_detected_lang = "en-US"
             
@@ -109,13 +108,13 @@ def render_audio_tab():
             if detected_format == "m4a": 
                 detected_format = "mp3"
                 
-            if st.button("🔮 Step 1: Run Audio Transcription", use_container_width=True):
-                with st.spinner("Extracting speech vectors..."):
+            if st.button("🔮 Run Audio Transcription", use_container_width=True):
+                with st.spinner("Extracting spoken words..."):
                     try:
                         raw_audio_bytes = uploaded_audio.read()
                         chosen_input_lang = st.session_state.get("auto_detected_lang", "en-US")
                         
-                        # Transcribe strictly to the original language first
+                        # 1. Transcribe the audio track into its native original language string first
                         transcript_raw = transcribe_service.speech_to_text(
                             audio_bytes=raw_audio_bytes,
                             audio_format=detected_format,
@@ -127,20 +126,31 @@ def render_audio_tab():
                     except Exception as trans_err:
                         st.error(f"Processing Pipeline Crash: {str(trans_err)}")
 
-        # Step 2: Live Translation UI Switch (Only renders once original text is present)
+        # =========================================================================
+        # STEP 2: LIVE TEXT TRANSLATION ON DEMAND
+        # =========================================================================
         if "raw_extracted_transcript" in st.session_state:
             st.write("---")
-            st.write("### 🌍 Step 2: Live Translation Options")
+            st.write("### 🌍 Step 2: Text to Translation (On-Demand)")
+            
+            # Displays the captured text in its original raw layout format first
+            st.text_area(
+                "Original Spoken Transcript:", 
+                value=st.session_state["raw_extracted_transcript"], 
+                height=100, 
+                disabled=True,
+                key="raw_text_display_view"
+            )
             
             target_choice = st.selectbox(
-                "🌐 Convert Output Text Language to:",
-                ["Original (Same as Audio)", "Telugu (తెలుగు)", "Hindi (हिन्दी)", "Tamil (தமிழ்)", "English"],
+                "🌐 Select Target Language to Translate Text Into:",
+                ["Original (No Translation)", "Telugu (తెలుగు)", "Hindi (हिन्दी)", "Tamil (தமிழ்)", "English"],
                 index=0,
                 key="stt_output_language_selector"
             )
             
             output_code_map = {
-                "Original (Same as Audio)": "original", 
+                "Original (No Translation)": "original", 
                 "English": "en", 
                 "Telugu (తెలుగు)": "te", 
                 "Hindi (हिन्दी)": "hi", 
@@ -148,8 +158,8 @@ def render_audio_tab():
             }
             selected_output_code = output_code_map[target_choice]
             
-            # Execute on-the-fly string translation instantly without touching the audio file again
-            with st.spinner("Translating text layout..."):
+            # Process the text translation instantly in real time on demand
+            with st.spinner("Translating text blocks..."):
                 display_text = transcribe_service._translate_text(
                     st.session_state["raw_extracted_transcript"], 
                     selected_output_code
@@ -158,17 +168,17 @@ def render_audio_tab():
             edited_transcript = st.text_area(
                 "Final Transcript / Translation Output Window:", 
                 value=display_text, 
-                height=180,
+                height=150,
                 key="stt_transcript_edit_area"
             )
             
-            if st.button("💾 Sync Transcript to Tab 1 Document Draft", use_container_width=True):
+            if st.button("💾 Sync Final Text to Tab 1 Document Draft", use_container_width=True):
                 st.session_state.document_draft = edited_transcript
                 st.toast("✅ Workspace Synced! Draft shifted to Document Engine.", icon="💾")
                 st.success("Draft snapshot synchronized back into main Workspace Matrix panel successfully!")
                 st.rerun()
                 
-            if st.button("🗑️ Clear Transcription State & File Window", use_container_width=True, key="clear_stt_btn"):
+            if st.button("🗑️ Reset Audio Tab Workspace Space", use_container_width=True, key="clear_stt_btn"):
                 st.session_state.pop("raw_extracted_transcript", None)
                 st.session_state.pop("last_file_name", None)
                 st.rerun()
