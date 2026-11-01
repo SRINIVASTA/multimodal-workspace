@@ -8,8 +8,8 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Isolates and stitches translation blocks cleanly from Google's multi-sentence matrix array."""
-        if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
+        """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
+        if not text or target_lang == "original" or text.startswith("☁️") or "With Size Optimization" in text:
             return text
         try:
             base_url = "https://googleapis.com"
@@ -24,17 +24,17 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # EXACT API MATRIX COORDINATE TARGETING: 
-                # data[0] contains the array of sentence translations.
-                # Each segment inside it has the translated text at position index 0.
-                if data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
-                    full_translation = ""
-                    for segment in data[0]:
-                        if isinstance(segment, list) and len(segment) > 0 and isinstance(segment[0], str):
-                            full_translation += segment[0]
-                    
-                    if full_translation.strip():
-                        return full_translation.strip()
+                # SAFE COORDINATE SCAN: Iterates through the top payload list directly to catch translated blocks
+                if data and isinstance(data, list) and len(data) > 0:
+                    text_matrix = data[0]
+                    if isinstance(text_matrix, list):
+                        full_translation = ""
+                        for segment in text_matrix:
+                            if isinstance(segment, list) and len(segment) > 0 and isinstance(segment[0], str):
+                                # Position segment[0] isolates the translated text chunk string directly
+                                full_translation += segment[0]
+                        if full_translation.strip():
+                            return full_translation.strip()
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
@@ -56,8 +56,9 @@ class TranscriptionService:
                     
                     if det_res.ok and isinstance(det_res.json(), list):
                         raw_payload = det_res.json()
-                        if len(raw_payload) > 2 and isinstance(raw_payload, str):
-                            detected_slug = raw_payload.lower()
+                        # Position index 2 inside Google Translate's data structure exposes the language code
+                        if len(raw_payload) > 2 and isinstance(raw_payload[2], str):
+                            detected_slug = raw_payload[2].lower()
                             if "te" in detected_slug: return "te-IN"
                             if "hi" in detected_slug: return "hi-IN"
                             if "ta" in detected_slug: return "ta-IN"
