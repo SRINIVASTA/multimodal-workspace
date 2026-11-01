@@ -7,6 +7,17 @@ class TranscriptionService:
     def __init__(self):
         self.recognizer = sr.Recognizer()
 
+    def _extract_translated_string(self, obj) -> str:
+        """Recursively drills down into any nested list array structure to find strings."""
+        if isinstance(obj, list) and len(obj) > 0:
+            # In Google's structure, the first element of the first list holds the text block
+            first_element = obj[0]
+            if isinstance(first_element, list):
+                return self._extract_translated_string(first_element)
+            elif isinstance(first_element, str):
+                return first_element
+        return ""
+
     def _translate_text(self, text: str, target_lang: str) -> str:
         """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
@@ -24,13 +35,10 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # TARGET FIX: Drill directly into the exact nested index array coordinate [0][0][0]
-                if data and isinstance(data, list) and len(data) > 0:
-                    if isinstance(data[0], list) and len(data[0]) > 0:
-                        if isinstance(data[0][0], list) and len(data[0][0]) > 0:
-                            translated_string = data[0][0][0]
-                            if translated_string and str(translated_string).strip():
-                                return str(translated_string).strip()
+                # Use recursive extraction to capture the deep structural string layer
+                translated_result = self._extract_translated_string(data)
+                if translated_result and translated_result.strip():
+                    return translated_result.strip()
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
@@ -88,6 +96,8 @@ class TranscriptionService:
                 raw_wav_io.seek(0)
                 
                 with sr.AudioFile(raw_wav_io) as source:
+                    self.recognizer.dynamic_energy_threshold = False
+                    self.recognizer.energy_threshold = 100
                     self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                     audio_data = self.recognizer.record(source)
                     
