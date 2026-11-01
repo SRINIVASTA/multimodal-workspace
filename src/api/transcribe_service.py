@@ -8,33 +8,25 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
+        """Helper method to isolate and parse translations instantly using flat JSON properties."""
         if not text or target_lang == "original" or text.startswith("☁️") or "With Size Optimization" in text:
             return text
         try:
-            base_url = "https://googleapis.com"
+            # Shift translation pipeline to use a flat JSON endpoint architecture
+            base_url = "https://translated.net"
             query_params = {
-                "client": "gtx",
-                "sl": "auto",
-                "tl": target_lang,
-                "dt": "t",
-                "q": text
+                "q": text,
+                "langpair": f"en|{target_lang}"  # Formats standard language mapping pairs (e.g., en|te, en|ta, en|hi)
             }
             
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
-                data = res.json()
-                # EXACT EXTRACTION FIX: Drill directly into the grid matrix where translated fragments live
-                if data and isinstance(data, list) and len(data) > 0:
-                    sentence_matrix = data[0]
-                    if isinstance(sentence_matrix, list):
-                        full_translation = ""
-                        for segment in sentence_matrix:
-                            # Position 0 inside each inner segment array contains the actual translated phrase string
-                            if isinstance(segment, list) and len(segment) > 0 and segment[0]:
-                                full_translation += str(segment[0])
-                        if full_translation.strip():
-                            return full_translation.strip()
+                response_json = res.json()
+                # Direct lookup on flat key string property value matrices
+                if "responseData" in response_json and "translatedText" in response_json["responseData"]:
+                    translated_string = response_json["responseData"]["translatedText"]
+                    if translated_string and translated_string.strip() != text.strip():
+                        return translated_string.strip()
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
@@ -50,19 +42,19 @@ class TranscriptionService:
             if response.ok and "text" in response.json():
                 sample_text = response.json()["text"].strip()
                 if sample_text:
-                    detect_url = f"https://googleapis.com"
-                    params = {"client": "gtx", "sl": "auto", "tl": "en", "dt": "t", "q": sample_text}
-                    det_res = requests.get(detect_url, params=params, timeout=10)
-                    
-                    if det_res.ok and isinstance(det_res.json(), list):
-                        raw_payload = det_res.json()
-                        if len(raw_payload) > 2 and isinstance(raw_payload, str):
-                            detected_slug = raw_payload.lower()
+                    base_url = "https://translated.net"
+                    query_params = {"q": sample_text, "langpair": "en|en"}
+                    det_res = requests.get(base_url, params=query_params, timeout=10)
+                    if det_res.ok:
+                        # Extract matches metadata structure properties natively
+                        res_data = det_res.json()
+                        if "matches" in res_data and len(res_data["matches"]) > 0:
+                            # Safely extract matching language profiles from the provider payload matrix
+                            detected_slug = res_data["matches"][0].get("language", "en").lower()
                             if "te" in detected_slug: return "te-IN"
                             if "hi" in detected_slug: return "hi-IN"
                             if "ta" in detected_slug: return "ta-IN"
                             if "en" in detected_slug: return "en-US"
-                            return f"{detected_slug}-IN" if len(detected_slug) == 2 else "en-US"
         except Exception:
             pass
         return "en-US"
