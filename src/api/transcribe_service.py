@@ -8,7 +8,7 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to isolate and parse the exact translation text chunks cleanly."""
+        """Helper method to correctly extract and merge translation blocks from the API array matrix."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
             return text
         try:
@@ -24,14 +24,14 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # Clean nested array traversal loop to gather the full translation
+                # FIXED EXTRACTION: Target position 0 of each array segment block directly
                 if data and isinstance(data, list) and len(data) > 0:
-                    text_blocks = data[0]
-                    if isinstance(text_blocks, list):
+                    text_segments = data[0]
+                    if isinstance(text_segments, list):
                         full_translation = ""
-                        for block in text_blocks:
-                            if isinstance(block, list) and len(block) > 0 and isinstance(block[0], str):
-                                full_translation += block[0]
+                        for block in text_segments:
+                            if isinstance(block, list) and len(block) > 0 and block[0]:
+                                full_translation += str(block[0])
                         if full_translation.strip():
                             return full_translation.strip()
         except Exception as e:
@@ -91,6 +91,8 @@ class TranscriptionService:
                 raw_wav_io.seek(0)
                 
                 with sr.AudioFile(raw_wav_io) as source:
+                    self.recognizer.dynamic_energy_threshold = False
+                    self.recognizer.energy_threshold = 100
                     self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                     audio_data = self.recognizer.record(source)
                     
