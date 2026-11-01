@@ -3,14 +3,12 @@ import streamlit as st
 def render_audio_tab():
     st.subheader("🎵 Hyper-Realistic Voice Synthesis & Transcription Engine")
     
-    # Imports both your untouched service and the newly separated backend module
     from src.api.media_service import UnifiedAIService
     from src.api.transcribe_service import TranscriptionService
     
     ai_service = UnifiedAIService()
     transcribe_service = TranscriptionService()
     
-    # Modular sub-tabs structure to cleanly divide UI features
     tab_tts, tab_stt = st.tabs(["⚡ Text-to-Speech (Synthesis)", "🎙️ Speech-to-Text (Transcription)"])
     
     # =========================================================================
@@ -72,17 +70,43 @@ def render_audio_tab():
                 st.rerun()
 
     # =========================================================================
-    # SUB-TAB 2: SPEECH-TO-TEXT (STT)
+    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Universal Language Interface
     # =========================================================================
     with tab_stt:
         st.write("### Transcribe Audio Track to Text")
         
         st_model = st.selectbox(
             "Select Transcription Model Routing:",
-            ["openai/whisper-large-v3", "fish-audio/transcribe-1-pro"],
+            ["Local Free Transcription Engine"],
             key="stt_model_selector"
         )
         
+        # New language mapping framework to support Telugu, Hindi, Tamil and Auto-checks
+        lang_choice = st.selectbox(
+            "🗣️ Select Audio Language:",
+            {
+                "te-IN": "Telugu (తెలుగు)",
+                "hi-IN": "Hindi (हिन्दी)",
+                "ta-IN": "Tamil (தமிழ்)",
+                "en-IN": "Indian English (Mixed/Multilingual)",
+                "en-US": "English (US)",
+                "auto": "Auto-Detect Language Profile (Best Effort)"
+            }.values(),
+            index=0, # Defaults to Telugu based on your active request file profile
+            key="stt_language_selector"
+        )
+        
+        # Invert dictionary selection value map keying safely
+        lang_code_map = {
+            "Telugu (తెలుగు)": "te-IN",
+            "Hindi (हिन्दी)": "hi-IN",
+            "Tamil (தமிழ்)": "ta-IN",
+            "Indian English (Mixed/Multilingual)": "en-IN",
+            "English (US)": "en-US",
+            "Auto-Detect Language Profile (Best Effort)": "auto"
+        }
+        selected_lang_code = lang_code_map[lang_choice]
+
         uploaded_audio = st.file_uploader(
             "Upload Target Audio Track Frame:", 
             type=["mp3", "wav", "m4a", "ogg"],
@@ -95,13 +119,13 @@ def render_audio_tab():
                 detected_format = "mp3"
                 
             if st.button("🔮 Run Transcription Pipeline", use_container_width=True):
-                with st.spinner("Decoding audio binary matrices..."):
+                with st.spinner("Decoding multi-lingual audio binary matrices..."):
                     try:
                         raw_audio_bytes = uploaded_audio.read()
                         extracted_transcript = transcribe_service.speech_to_text(
                             audio_bytes=raw_audio_bytes,
                             audio_format=detected_format,
-                            model=st_model
+                            language_code=selected_lang_code
                         )
                         
                         st.session_state["last_active_transcript"] = extracted_transcript
@@ -119,7 +143,6 @@ def render_audio_tab():
             
             if st.button("💾 Sync Transcript to Tab 1 Document Draft", use_container_width=True):
                 st.session_state.document_draft = edited_transcript
-                # Use query parameters or toast message alerts to guarantee user notice before rerun cycle
                 st.toast("✅ Workspace Synced! Draft shifted to Document Engine.", icon="💾")
                 st.success("Draft snapshot synchronized back into main Workspace Matrix panel successfully!")
                 st.rerun()
