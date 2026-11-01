@@ -7,12 +7,11 @@ def render_audio_tab():
     from src.api.media_service import UnifiedAIService
     ai_service = UnifiedAIService()
     
-    # Dynamic Voice Engine Selection Matrix (Free Only)
+    # Dynamic Voice Engine Selection Matrix (Free & Streams Native MP3)
     audio_model = st.selectbox(
         "Select Dynamic Speech/Voice Engine:",
         [
-            "deepgram/flux-tts:free",
-            "heygen/heygen-voice-1-turbo:free"
+            "fish-audio/s2.1-pro-free:free"
         ],
         key="audio_dynamic_model_selector"
     )
