@@ -8,11 +8,10 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to translate text to the user's requested output language using valid parameter dict mapping."""
+        """Helper method to isolate and parse the exact translation from the API array matrix."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
             return text
         try:
-            # Clean structure initialization to prevent raw character URL encoding errors
             base_url = "https://googleapis.com"
             query_params = {
                 "client": "gtx",
@@ -24,17 +23,14 @@ class TranscriptionService:
             
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
-                translated_chunks = res.json()
-                # Safely extract matching text array segments from nested matrix indices
-                if translated_chunks and isinstance(translated_chunks, list) and len(translated_chunks) > 0:
-                    text_segments = translated_chunks[0]
-                    full_text = ""
-                    if isinstance(text_segments, list):
-                        for segment in text_segments:
-                            if isinstance(segment, list) and len(segment) > 0:
-                                # Pull position 0 which holds the translated text slice
-                                full_text += str(segment[0])
-                        return full_text if full_text.strip() else text
+                data = res.json()
+                # FIX: Target index [0][0][0] where Google Translate stores the translated string
+                if data and isinstance(data, list) and len(data) > 0:
+                    if data[0] and isinstance(data[0], list) and len(data[0]) > 0:
+                        if data[0][0] and isinstance(data[0][0], list) and len(data[0][0]) > 0:
+                            translated_string = data[0][0][0]
+                            if translated_string and str(translated_string).strip():
+                                return str(translated_string).strip()
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
