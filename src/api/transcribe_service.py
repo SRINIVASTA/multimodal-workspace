@@ -6,21 +6,23 @@ class TranscriptionService:
     def __init__(self):
         self.recognizer = sr.Recognizer()
 
-    def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", model: str = "") -> str:
-        """Transcribes physical audio streams using local zero-cost processing libraries."""
+    def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", language_code: str = "te-IN") -> str:
+        """Transcribes physical audio streams using local zero-cost processing libraries supporting global language matrices."""
         audio_io = io.BytesIO(audio_bytes)
         
-        # STRATEGY: Try reading natively first without complex third-party tools
+        # Native WAV PCM checking pass
         if audio_format.lower() == "wav":
             try:
                 with sr.AudioFile(audio_io) as source:
                     self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                     audio_data = self.recognizer.record(source)
-                return self.recognizer.recognize_google(audio_data, language="en-IN")
+                # Map target code explicitly
+                target_lang = "" if language_code == "auto" else language_code
+                return self.recognizer.recognize_google(audio_data, language=target_lang)
             except Exception:
-                # If native read fails, drop down to the advanced encoder track below
                 audio_io.seek(0)
 
+        # Compressed stream asset parsing track
         try:
             from pydub import AudioSegment
             audio_segment = AudioSegment.from_file(audio_io, format=audio_format.lower())
@@ -30,10 +32,14 @@ class TranscriptionService:
             raw_wav_io.seek(0)
             
             with sr.AudioFile(raw_wav_io) as source:
+                self.recognizer.dynamic_energy_threshold = False
+                self.recognizer.energy_threshold = 100
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                 audio_data = self.recognizer.record(source)
                 
-            return self.recognizer.recognize_google(audio_data, language="en-IN")
+            # If "auto" is chosen, let the endpoint guess, otherwise enforce explicit regional codes
+            target_lang = "" if language_code == "auto" else language_code
+            return self.recognizer.recognize_google(audio_data, language=target_lang)
             
         except FileNotFoundError as e:
             if "ffprobe" in str(e) or "ffmpeg" in str(e):
