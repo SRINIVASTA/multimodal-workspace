@@ -3,16 +3,20 @@ import streamlit as st
 def render_audio_tab():
     st.subheader("🎵 Hyper-Realistic Voice Synthesis & Transcription Engine")
     
+    # Imports both your untouched service and the newly separated backend module
     from src.api.media_service import UnifiedAIService
+    from src.api.transcribe_service import TranscriptionService
+    
     ai_service = UnifiedAIService()
+    transcribe_service = TranscriptionService()
     
-    # Split the workspace into clear task panels
-    mode_selection = st.tabs(["⚡ Text-to-Speech (Synthesis)", "🎙️ Speech-to-Text (Transcription)"])
+    # Modular sub-tabs structure to cleanly divide UI features
+    tab_tts, tab_stt = st.tabs(["⚡ Text-to-Speech (Synthesis)", "🎙️ Speech-to-Text (Transcription)"])
     
     # =========================================================================
-    # TASK PANEL 1: TEXT TO SPEECH
+    # SUB-TAB 1: TEXT-TO-SPEECH (TTS) - Native Downloader Added
     # =========================================================================
-    with mode_selection[0]:
+    with tab_tts:
         audio_model = st.selectbox(
             "Select Free Dynamic Speech/Voice Engine:",
             ["fish-audio/s2.1-pro-free:free"],
@@ -46,15 +50,13 @@ def render_audio_tab():
             else:
                 with st.spinner("Compiling high-fidelity clean stream tracks..."):
                     try:
-                        audio_bytes = ai_service.text_to_speech(text=audio_text[:2000], model=audio_model)
-                        
-                        # Store audio buffer into session space for multi-element availability
+                        # Calls your actual service, leaving the voice argument clean for Fish Audio
+                        audio_bytes = ai_service.text_to_speech(text=audio_text[:2000], model=audio_model, voice="")
                         st.session_state["compiled_audio_track"] = audio_bytes
                         st.success("Clean high-fidelity audio narration generated successfully!")
                     except Exception as e:
                         st.error(f"Audio API Disconnect: {str(e)}")
                         
-        # NATIVE DOWNLOAD SUB-FRAME
         if "compiled_audio_track" in st.session_state:
             st.audio(st.session_state["compiled_audio_track"], format="audio/mp3")
             st.download_button(
@@ -66,9 +68,9 @@ def render_audio_tab():
             )
 
     # =========================================================================
-    # TASK PANEL 2: SPEECH TO TEXT
+    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Isolated Transcription Layout
     # =========================================================================
-    with mode_selection[1]:
+    with tab_stt:
         st.write("### Transcribe Audio Track to Text")
         
         st_model = st.selectbox(
@@ -80,32 +82,37 @@ def render_audio_tab():
         uploaded_audio = st.file_uploader(
             "Upload Target Audio Track Frame:", 
             type=["mp3", "wav", "m4a", "ogg"],
-            help="Select an audio file to extract transcription strings straight into workspace workflows."
+            key="stt_audio_uploader"
         )
         
         if uploaded_audio is not None:
-            # Detect string format dynamically from file extension mapping
             detected_format = uploaded_audio.name.split(".")[-1].lower()
             if detected_format == "m4a": 
-                detected_format = "mp3" # Force standard audio routing fallback
+                detected_format = "mp3"
                 
             if st.button("🔮 Run Transcription Pipeline", use_container_width=True):
                 with st.spinner("Decoding audio binary matrices..."):
                     try:
                         raw_audio_bytes = uploaded_audio.read()
-                        extracted_transcript = ai_service.speech_to_text(
+                        extracted_transcript = transcribe_service.speech_to_text(
                             audio_bytes=raw_audio_bytes,
                             audio_format=detected_format,
                             model=st_model
                         )
                         
+                        st.session_state["last_active_transcript"] = extracted_transcript
                         st.success("Transcription processing round finalized successfully!")
-                        st.text_area("Extracted Transcript Output Context Window:", value=extracted_transcript, height=180)
-                        
-                        # Inject straight back into your Tab 1 data frame state sync manager
-                        if st.button("💾 Sync Transcript to Tab 1 Document Draft"):
-                            st.session_state.document_draft = extracted_transcript
-                            st.session_state["text_tab_canvas_editor"] = extracted_transcript
-                            st.info("Draft snapshot synchronized back into main Workspace Matrix panel.")
                     except Exception as trans_err:
                         st.error(f"Transcription Pipeline Crash: {str(trans_err)}")
+                        
+        if "last_active_transcript" in st.session_state:
+            edited_transcript = st.text_area(
+                "Extracted Transcript Output Context Window:", 
+                value=st.session_state["last_active_transcript"], 
+                height=180
+            )
+            
+            if st.button("💾 Sync Transcript to Tab 1 Document Draft", use_container_width=True):
+                st.session_state.document_draft = edited_transcript
+                st.session_state["text_tab_canvas_editor"] = edited_transcript
+                st.info("Draft snapshot synchronized back into main Workspace Matrix panel.")
