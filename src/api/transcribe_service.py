@@ -8,7 +8,7 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to correctly extract and merge translation blocks from the API array matrix."""
+        """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
             return text
         try:
@@ -24,14 +24,14 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # FIXED EXTRACTION: Target position 0 of each array segment block directly
+                # EXACT EXTRACTION FIX: Targets the true coordinate layer where Google nests translated segments
                 if data and isinstance(data, list) and len(data) > 0:
-                    text_segments = data[0]
-                    if isinstance(text_segments, list):
+                    if isinstance(data[0], list) and len(data[0]) > 0:
                         full_translation = ""
-                        for block in text_segments:
-                            if isinstance(block, list) and len(block) > 0 and block[0]:
-                                full_translation += str(block[0])
+                        for segment in data[0]:
+                            if isinstance(segment, list) and len(segment) > 0 and isinstance(segment[0], str):
+                                # Pull index 0 which contains the actual translated piece string
+                                full_translation += segment[0]
                         if full_translation.strip():
                             return full_translation.strip()
         except Exception as e:
