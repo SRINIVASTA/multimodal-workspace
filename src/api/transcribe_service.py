@@ -24,14 +24,15 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # EXACT EXTRACTION FIX: Targets the true coordinate layer where Google nests translated segments
+                # TRIPLE-GUARDED MATRIX FIX: Safely enters the nested lists to pull translation slices
                 if data and isinstance(data, list) and len(data) > 0:
-                    if isinstance(data[0], list) and len(data[0]) > 0:
+                    first_matrix = data[0]
+                    if isinstance(first_matrix, list):
                         full_translation = ""
-                        for segment in data[0]:
-                            if isinstance(segment, list) and len(segment) > 0 and isinstance(segment[0], str):
-                                # Pull index 0 which contains the actual translated piece string
-                                full_translation += segment[0]
+                        for sentence_block in first_matrix:
+                            # Position 0 inside each sub-array holds the translated segment string
+                            if isinstance(sentence_block, list) and len(sentence_block) > 0 and isinstance(sentence_block[0], str):
+                                full_translation += sentence_block[0]
                         if full_translation.strip():
                             return full_translation.strip()
         except Exception as e:
@@ -55,8 +56,8 @@ class TranscriptionService:
                     
                     if det_res.ok and isinstance(det_res.json(), list):
                         raw_payload = det_res.json()
-                        if len(raw_payload) > 2 and isinstance(raw_payload[2], str):
-                            detected_slug = raw_payload[2].lower()
+                        if len(raw_payload) > 2 and isinstance(raw_payload, str):
+                            detected_slug = raw_payload.lower()
                             if "te" in detected_slug: return "te-IN"
                             if "hi" in detected_slug: return "hi-IN"
                             if "ta" in detected_slug: return "ta-IN"
