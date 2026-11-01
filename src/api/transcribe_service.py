@@ -7,23 +7,8 @@ class TranscriptionService:
     def __init__(self):
         self.recognizer = sr.Recognizer()
 
-    def _deep_crawl_translation(self, matrix_node) -> str:
-        """Recursively extracts only valid translated text tokens from any nested structure."""
-        if isinstance(matrix_node, str):
-            normalized = matrix_node.strip()
-            # Block system codes, language tags, or echoes of matching original text parameter keys
-            if normalized and normalized not in ["en", "te", "hi", "ta", "auto", "gtx"]:
-                return normalized + " "
-            return ""
-            
-        full_result = ""
-        if isinstance(matrix_node, list):
-            for sub_node in matrix_node:
-                full_result += self._deep_crawl_translation(sub_node)
-        return full_result
-
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
+        """Isolates and stitches translation blocks cleanly from Google's multi-sentence matrix array."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
             return text
         try:
@@ -39,16 +24,17 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                
-                # Execute deep recursive crawl pass to unpack text safely
-                if data and isinstance(data, list) and len(data) > 0:
-                    translated_block = self._deep_crawl_translation(data[0])
+                # EXACT API MATRIX COORDINATE TARGETING: 
+                # data[0] contains the array of sentence translations.
+                # Each segment inside it has the translated text at position index 0.
+                if data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
+                    full_translation = ""
+                    for segment in data[0]:
+                        if isinstance(segment, list) and len(segment) > 0 and isinstance(segment[0], str):
+                            full_translation += segment[0]
                     
-                    # Clean punctuation formatting
-                    cleaned_result = translated_block.strip()
-                    if cleaned_result and cleaned_result != text.strip():
-                        return cleaned_result
-                        
+                    if full_translation.strip():
+                        return full_translation.strip()
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
@@ -70,8 +56,8 @@ class TranscriptionService:
                     
                     if det_res.ok and isinstance(det_res.json(), list):
                         raw_payload = det_res.json()
-                        if len(raw_payload) > 2 and isinstance(raw_payload[2], str):
-                            detected_slug = raw_payload[2].lower()
+                        if len(raw_payload) > 2 and isinstance(raw_payload, str):
+                            detected_slug = raw_payload.lower()
                             if "te" in detected_slug: return "te-IN"
                             if "hi" in detected_slug: return "hi-IN"
                             if "ta" in detected_slug: return "ta-IN"
