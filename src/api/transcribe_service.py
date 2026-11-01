@@ -8,23 +8,31 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to translate text to the user's requested output language using strict matrix mapping rules."""
+        """Helper method to translate text to the user's requested output language using valid parameter dict mapping."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
             return text
         try:
-            # Free serverless translation router pass
-            url = f"https://googleapis.com{target_lang}&dt=t&q={requests.utils.quote(text)}"
-            res = requests.get(url, timeout=10)
+            # Clean structure initialization to prevent raw character URL encoding errors
+            base_url = "https://googleapis.com"
+            query_params = {
+                "client": "gtx",
+                "sl": "auto",
+                "tl": target_lang,
+                "dt": "t",
+                "q": text
+            }
+            
+            res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 translated_chunks = res.json()
-                # FIX: Access the deeply nested string slice returned inside array coordinate sets
+                # Safely extract matching text array segments from nested matrix indices
                 if translated_chunks and isinstance(translated_chunks, list) and len(translated_chunks) > 0:
                     text_segments = translated_chunks[0]
                     full_text = ""
                     if isinstance(text_segments, list):
                         for segment in text_segments:
                             if isinstance(segment, list) and len(segment) > 0:
-                                # Pull index 0 which contains the actual parsed string content block
+                                # Pull position 0 which holds the translated text slice
                                 full_text += str(segment[0])
                         return full_text if full_text.strip() else text
         except Exception as e:
@@ -67,7 +75,6 @@ class TranscriptionService:
                 # Track 3: Online cloud proxy fallback for serverless hosting frames
                 try:
                     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-                    # FIX: If input language code is 'auto', explicitly pass 'en-US' or blank parameter to help the network layer parse the file safely
                     api_url = f"https://dictation.io{speech_lang if speech_lang else 'en-US'}"
                     files = {'file': (f"audio.{audio_format}", audio_bytes, f"audio/{audio_format}")}
                     response = requests.post(api_url, files=files, headers=headers, timeout=30)
