@@ -7,8 +7,33 @@ class TranscriptionService:
     def __init__(self):
         self.recognizer = sr.Recognizer()
 
+    def detect_audio_language(self, audio_bytes: bytes, audio_format: str = "mp3") -> str:
+        """Inspects the baseline token vectors of an audio track snippet to auto-detect its spoken language."""
+        try:
+            # Step 1: Run a rapid global pass to convert the initial sample into an anonymous string block
+            headers = {"User-Agent": "Mozilla/5.0"}
+            api_url = "https://dictation.io" # Baseline evaluation probe
+            files = {'file': (f"sample.{audio_format}", audio_bytes[:150 * 1024], f"audio/{audio_format}")}
+            response = requests.post(api_url, files=files, headers=headers, timeout=15)
+            
+            # Step 2: Use an open translation prediction profile pass to determine the vocabulary source domain
+            if response.ok and "text" in response.json():
+                sample_text = response.json()["text"]
+                if sample_text.strip():
+                    detect_url = f"https://googleapis.com{requests.utils.quote(sample_text)}"
+                    det_res = requests.get(detect_url, timeout=10)
+                    if det_res.ok and isinstance(det_res.json(), list):
+                        # Position 2 inside Google Translate's matrix array holds the detected language code string (e.g., 'te', 'hi', 'en')
+                        lang_code = det_res.json()[2]
+                        if lang_code == "te": return "te-IN"
+                        if lang_code == "hi": return "hi-IN"
+                        if lang_code == "ta": return "ta-IN"
+        except Exception:
+            pass
+        return "te-IN" # Reliable default regional assignment tracking fallback
+
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to isolate and parse the exact translation from the API array matrix."""
+        """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
             return text
         try:
@@ -24,26 +49,27 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # ROBUST FIX: Drill directly into the nested translation array structures safely
-                if data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
+                # FIXED EXTRACTION LOOP: Iterate cleanly through returned index arrays to collect sentences
+                if data and isinstance(data, list) and len(data) > 0:
+                    text_matrix = data[0]
                     full_translation = ""
-                    for sentence_block in data[0]:
-                        if isinstance(sentence_block, list) and len(sentence_block) > 0:
-                            # Position 0 inside each sub-array contains the actual translated piece
-                            full_translation += str(sentence_block[0])
-                    
-                    if full_translation.strip():
-                        return full_translation.strip()
+                    if isinstance(text_matrix, list):
+                        for element in text_matrix:
+                            if isinstance(element, list) and len(element) > 0:
+                                # Position 0 explicitly isolates individual sentence text blocks
+                                full_translation += str(element[0])
+                        
+                        if full_translation.strip():
+                            return full_translation.strip()
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
 
-    def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", language_code: str = "auto", target_lang: str = "original") -> str:
+    def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", language_code: str = "te-IN", target_lang: str = "original") -> str:
         """Transcribes any dynamic format and handles automatic translation transformations seamlessly."""
         audio_io = io.BytesIO(audio_bytes)
-        speech_lang = "" if language_code == "auto" else language_code
+        speech_lang = language_code
 
-        # Track 1: Uncompressed WAV fallback logic pass
         raw_text = ""
         if audio_format.lower() == "wav":
             try:
@@ -54,7 +80,6 @@ class TranscriptionService:
             except Exception:
                 audio_io.seek(0)
 
-        # Track 2: Local pydub transcoder block if ffmpeg dependencies exist
         if not raw_text:
             try:
                 from pydub import AudioSegment
@@ -71,10 +96,9 @@ class TranscriptionService:
                 raw_text = self.recognizer.recognize_google(audio_data, language=speech_lang)
                 
             except (FileNotFoundError, ImportError):
-                # Track 3: Online cloud proxy fallback for serverless hosting frames
                 try:
-                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-                    api_url = f"https://dictation.io{speech_lang if speech_lang else 'en-US'}"
+                    headers = {"User-Agent": "Mozilla/5.0"}
+                    api_url = f"https://dictation.io{speech_lang}"
                     files = {'file': (f"audio.{audio_format}", audio_bytes, f"audio/{audio_format}")}
                     response = requests.post(api_url, files=files, headers=headers, timeout=30)
                     if response.ok and "text" in response.json():
@@ -91,5 +115,4 @@ class TranscriptionService:
             except Exception as general_err:
                 return f"Transcription Warning: Sound captured, but audio content could not be parsed: {str(general_err)}"
 
-        # Run translation transformation logic mapping pass before passing strings back to the interface layout
         return self._translate_text(raw_text, target_lang)
