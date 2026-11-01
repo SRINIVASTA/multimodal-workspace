@@ -114,9 +114,10 @@ def render_audio_tab():
         )
         
         if uploaded_audio is not None:
+            # Dynamically isolate the true extension string from any uploaded filename pattern
             detected_format = uploaded_audio.name.split(".")[-1].lower()
             if detected_format == "m4a": 
-                detected_format = "mp3"
+                detected_format = "mp3"  # Standard routing fallback namespace assignment
                 
             if st.button("🔮 Run Transcription Pipeline", use_container_width=True):
                 with st.spinner("Decoding multi-lingual audio binary matrices..."):
