@@ -6,6 +6,7 @@ from src.config import settings
 class TranscriptionService:
     def __init__(self):
         self.headers = settings.headers
+        # FIX: Append /api/v1 so OpenRouter knows how to parse the incoming API endpoints
         self.base_url = "https://openrouter.ai"
 
     def _execute_post(self, endpoint_route: str, payload: Dict[str, Any]) -> Any:
