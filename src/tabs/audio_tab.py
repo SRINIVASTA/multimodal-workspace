@@ -50,8 +50,8 @@ def render_audio_tab():
             else:
                 with st.spinner("Compiling high-fidelity clean stream tracks..."):
                     try:
-                        # Calls your actual service, leaving the voice argument clean for Fish Audio
-                        audio_bytes = ai_service.text_to_speech(text=audio_text[:2000], model=audio_model, voice="")
+                        # Calls your service with a valid default voice ID string to pass validation checks
+                        audio_bytes = ai_service.text_to_speech(text=audio_text[:2000], model=audio_model, voice="lovelace")
                         st.session_state["compiled_audio_track"] = audio_bytes
                         st.success("Clean high-fidelity audio narration generated successfully!")
                     except Exception as e:
