@@ -8,19 +8,26 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to translate text to the user's requested output language."""
-        if not text or target_lang == "original" or text.startswith("Cloud Environment") or text.startswith("Transcription Warning"):
+        """Helper method to translate text to the user's requested output language using valid matrix extraction rules."""
+        if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
             return text
         try:
             # Free serverless translation router pass
             url = f"https://googleapis.com{target_lang}&dt=t&q={requests.utils.quote(text)}"
             res = requests.get(url, timeout=10)
             if res.ok:
-                translated_chunks = res.json()[0]
-                full_translation = "".join([chunk[0] for chunk in translated_chunks if chunk[0]])
-                return full_translation
-        except Exception:
-            return f"{text}\n\n[Translation Server Busy: Output kept in detected language format]"
+                translated_chunks = res.json()
+                # FIX: Google Translate returns nested arrays where position [0] contains individual translation text nodes
+                if translated_chunks and isinstance(translated_chunks, list) and len(translated_chunks) > 0:
+                    translated_segments = translated_chunks[0]
+                    full_text = ""
+                    if isinstance(translated_segments, list):
+                        for segment in translated_segments:
+                            if isinstance(segment, list) and len(segment) > 0:
+                                full_text += str(segment[0])
+                        return full_text if full_text.strip() else text
+        except Exception as e:
+            return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
 
     def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", language_code: str = "auto", target_lang: str = "original") -> str:
@@ -58,7 +65,7 @@ class TranscriptionService:
             except (FileNotFoundError, ImportError):
                 # Track 3: Online cloud proxy fallback for serverless hosting frames
                 try:
-                    headers = {"User-Agent": "Mozilla/5.0"}
+                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
                     api_url = f"https://dictation.io{speech_lang if speech_lang else 'en-US'}"
                     files = {'file': (f"audio.{audio_format}", audio_bytes, f"audio/{audio_format}")}
                     response = requests.post(api_url, files=files, headers=headers, timeout=30)
