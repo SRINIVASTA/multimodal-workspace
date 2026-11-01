@@ -68,7 +68,7 @@ def render_audio_tab():
             )
 
     # =========================================================================
-    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Isolated Transcription Layout
+    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - With Size Optimization Guardrails
     # =========================================================================
     with tab_stt:
         st.write("### Transcribe Audio Track to Text")
@@ -90,21 +90,28 @@ def render_audio_tab():
             if detected_format == "m4a": 
                 detected_format = "mp3"
                 
-            if st.button("🔮 Run Transcription Pipeline", use_container_width=True):
-                with st.spinner("Decoding audio binary matrices..."):
-                    try:
-                        raw_audio_bytes = uploaded_audio.read()
-                        extracted_transcript = transcribe_service.speech_to_text(
-                            audio_bytes=raw_audio_bytes,
-                            audio_format=detected_format,
-                            model=st_model
-                        )
-                        
-                        st.session_state["last_active_transcript"] = extracted_transcript
-                        st.success("Transcription processing round finalized successfully!")
-                    except Exception as trans_err:
-                        st.error(f"Transcription Pipeline Crash: {str(trans_err)}")
-                        
+            # Prevent immediate layout overflow issues by tracking raw sizes upfront
+            raw_mb = len(uploaded_audio.getvalue()) / (1024 * 1024)
+            if raw_mb > 25.0:
+                st.error(f"🛑 File size ({raw_mb:.1f} MB) exceeds maximum API framework boundaries. Please upload a smaller snippet.")
+            else:
+                if st.button("🔮 Run Transcription Pipeline", use_container_width=True):
+                    with st.spinner("Decoding audio binary matrices..."):
+                        try:
+                            raw_audio_bytes = uploaded_audio.read()
+                            
+                            # Standardize transmission routing parameters
+                            extracted_transcript = transcribe_service.speech_to_text(
+                                audio_bytes=raw_audio_bytes,
+                                audio_format=detected_format,
+                                model=st_model
+                            )
+                            
+                            st.session_state["last_active_transcript"] = extracted_transcript
+                            st.success("Transcription processing round finalized successfully!")
+                        except Exception as trans_err:
+                            st.error(f"Transcription Pipeline Crash: {str(trans_err)}")
+                            
         if "last_active_transcript" in st.session_state:
             edited_transcript = st.text_area(
                 "Extracted Transcript Output Context Window:", 
