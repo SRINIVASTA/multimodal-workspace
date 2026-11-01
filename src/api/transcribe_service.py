@@ -1,12 +1,12 @@
 import requests
 import base64
+import io
 from typing import Dict, Any
 from src.config import settings
 
 class TranscriptionService:
     def __init__(self):
         self.headers = settings.headers
-        # FIX: Append /api/v1 so OpenRouter knows how to parse the incoming API endpoints
         self.base_url = "https://openrouter.ai"
 
     def _execute_post(self, endpoint_route: str, payload: Dict[str, Any]) -> Any:
@@ -22,6 +22,22 @@ class TranscriptionService:
 
     def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", model: str = "openai/whisper-large-v3") -> str:
         """Transcribes physical audio streams using OpenRouter base64 transcription payloads."""
+        
+        # If the user uploads a bulky raw wav file, try to compress it using standard pydub if available
+        if audio_format.lower() == "wav" and len(audio_bytes) > 1024 * 1024:
+            try:
+                from pydub import AudioSegment
+                wav_io = io.BytesIO(audio_bytes)
+                audio = AudioSegment.from_wav(wav_io)
+                
+                mp3_io = io.BytesIO()
+                audio.export(mp3_io, format="mp3", bitrate="128k")
+                audio_bytes = mp3_io.getvalue()
+                audio_format = "mp3"
+            except ImportError:
+                # If pydub isn't installed, let it fall through or guide the user
+                pass
+
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
         payload = {
             "model": model,
