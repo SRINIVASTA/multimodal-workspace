@@ -24,13 +24,16 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # FIX: Target index [0][0][0] where Google Translate stores the translated string
-                if data and isinstance(data, list) and len(data) > 0:
-                    if data[0] and isinstance(data[0], list) and len(data[0]) > 0:
-                        if data[0][0] and isinstance(data[0][0], list) and len(data[0][0]) > 0:
-                            translated_string = data[0][0][0]
-                            if translated_string and str(translated_string).strip():
-                                return str(translated_string).strip()
+                # ROBUST FIX: Drill directly into the nested translation array structures safely
+                if data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
+                    full_translation = ""
+                    for sentence_block in data[0]:
+                        if isinstance(sentence_block, list) and len(sentence_block) > 0:
+                            # Position 0 inside each sub-array contains the actual translated piece
+                            full_translation += str(sentence_block[0])
+                    
+                    if full_translation.strip():
+                        return full_translation.strip()
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
