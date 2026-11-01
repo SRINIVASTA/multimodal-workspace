@@ -1,7 +1,7 @@
 import streamlit as st
 
 def render_audio_tab():
-    st.subheader("🎵 Hyper-Realistic Voice Synthesis & Transcription Engine")
+    st.subheader("🎵 Universal Multilingual Voice Synthesis & Transcription Engine")
     
     from src.api.media_service import UnifiedAIService
     from src.api.transcribe_service import TranscriptionService
@@ -70,73 +70,73 @@ def render_audio_tab():
                 st.rerun()
 
     # =========================================================================
-    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Universal Language Interface
+    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Dual Language Selector Panel
     # =========================================================================
     with tab_stt:
-        st.write("### Transcribe Audio Track to Text")
+        st.write("### Transcribe & Translate Audio Track")
         
         st_model = st.selectbox(
             "Select Transcription Model Routing:",
-            ["Local Free Transcription Engine"],
+            ["Local Free Universal Engine"],
             key="stt_model_selector"
         )
         
-        # New language mapping framework to support Telugu, Hindi, Tamil and Auto-checks
-        lang_choice = st.selectbox(
-            "🗣️ Select Audio Language:",
-            {
-                "te-IN": "Telugu (తెలుగు)",
-                "hi-IN": "Hindi (हिन्दी)",
-                "ta-IN": "Tamil (தமிழ்)",
-                "en-IN": "Indian English (Mixed/Multilingual)",
-                "en-US": "English (US)",
-                "auto": "Auto-Detect Language Profile (Best Effort)"
-            }.values(),
-            index=0, # Defaults to Telugu based on your active request file profile
-            key="stt_language_selector"
-        )
+        # Grid columns for layout design efficiency
+        col1, col2 = st.columns(2)
         
-        # Invert dictionary selection value map keying safely
-        lang_code_map = {
-            "Telugu (తెలుగు)": "te-IN",
-            "Hindi (हिन्दी)": "hi-IN",
-            "Tamil (தமிழ்)": "ta-IN",
-            "Indian English (Mixed/Multilingual)": "en-IN",
-            "English (US)": "en-US",
-            "Auto-Detect Language Profile (Best Effort)": "auto"
-        }
-        selected_lang_code = lang_code_map[lang_choice]
+        with col1:
+            lang_choice = st.selectbox(
+                "🗣️ Spoken Audio Language (Input):",
+                ["Auto-Detect", "Telugu (తెలుగు)", "Hindi (हिन्दी)", "Tamil (தமிழ்)", "English"],
+                index=0,
+                key="stt_input_language_selector"
+            )
+            
+        with col2:
+            target_choice = st.selectbox(
+                "🌐 Output Text Language (Translation Target):",
+                ["Original (Same as Audio)", "English", "Telugu (తెలుగు)", "Hindi (हिन्दी)", "Tamil (தமிழ்)"],
+                index=0,
+                key="stt_output_language_selector"
+            )
+        
+        # Mappings for internal engine codes
+        input_code_map = {"Auto-Detect": "auto", "Telugu (తెలుగు)": "te-IN", "Hindi (हिन्दी)": "hi-IN", "Tamil (தமிழ்)": "ta-IN", "English": "en-US"}
+        output_code_map = {"Original (Same as Audio)": "original", "English": "en", "Telugu (తెలుగు)": "te", "Hindi (हिन्दी)": "hi", "Tamil (தமிழ்)": "ta"}
+        
+        selected_input_code = input_code_map[lang_choice]
+        selected_output_code = output_code_map[target_choice]
 
         uploaded_audio = st.file_uploader(
             "Upload Target Audio Track Frame:", 
-            type=["mp3", "wav", "m4a", "ogg"],
+            type=["mp3", "wav", "m4a", "ogg", "flac"],
             key="stt_audio_uploader"
         )
         
         if uploaded_audio is not None:
-            # Dynamically isolate the true extension string from any uploaded filename pattern
             detected_format = uploaded_audio.name.split(".")[-1].lower()
             if detected_format == "m4a": 
-                detected_format = "mp3"  # Standard routing fallback namespace assignment
+                detected_format = "mp3"
                 
-            if st.button("🔮 Run Transcription Pipeline", use_container_width=True):
-                with st.spinner("Decoding multi-lingual audio binary matrices..."):
+            if st.button("🔮 Run Universal Processing Pipeline", use_container_width=True):
+                with st.spinner("Processing audio extraction and translation matrices..."):
                     try:
                         raw_audio_bytes = uploaded_audio.read()
                         extracted_transcript = transcribe_service.speech_to_text(
                             audio_bytes=raw_audio_bytes,
                             audio_format=detected_format,
-                            language_code=selected_lang_code
+                            language_code=selected_input_code,
+                            target_lang=selected_output_code
                         )
                         
                         st.session_state["last_active_transcript"] = extracted_transcript
-                        st.success("Transcription processing round finalized successfully!")
+                        st.success("Audio processed and translated successfully!")
                     except Exception as trans_err:
-                        st.error(f"Transcription Pipeline Crash: {str(trans_err)}")
+                        st.error(f"Processing Pipeline Crash: {str(trans_err)}")
                         
         if "last_active_transcript" in st.session_state:
             edited_transcript = st.text_area(
-                "Extracted Transcript Output Context Window:", 
+                "Final Transcript / Translation Output Window:", 
                 value=st.session_state["last_active_transcript"], 
                 height=180,
                 key="stt_transcript_edit_area"
