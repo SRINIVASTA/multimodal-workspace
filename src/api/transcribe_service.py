@@ -7,19 +7,8 @@ class TranscriptionService:
     def __init__(self):
         self.recognizer = sr.Recognizer()
 
-    def _extract_translated_string(self, obj) -> str:
-        """Recursively drills down into any nested list array structure to find strings."""
-        if isinstance(obj, list) and len(obj) > 0:
-            # In Google's structure, the first element of the first list holds the text block
-            first_element = obj[0]
-            if isinstance(first_element, list):
-                return self._extract_translated_string(first_element)
-            elif isinstance(first_element, str):
-                return first_element
-        return ""
-
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
+        """Helper method to isolate and parse the exact translation text chunks cleanly."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
             return text
         try:
@@ -35,10 +24,16 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # Use recursive extraction to capture the deep structural string layer
-                translated_result = self._extract_translated_string(data)
-                if translated_result and translated_result.strip():
-                    return translated_result.strip()
+                # Clean nested array traversal loop to gather the full translation
+                if data and isinstance(data, list) and len(data) > 0:
+                    text_blocks = data[0]
+                    if isinstance(text_blocks, list):
+                        full_translation = ""
+                        for block in text_blocks:
+                            if isinstance(block, list) and len(block) > 0 and isinstance(block[0], str):
+                                full_translation += block[0]
+                        if full_translation.strip():
+                            return full_translation.strip()
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
@@ -72,7 +67,7 @@ class TranscriptionService:
         return "en-US"
 
     def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", language_code: str = "en-US", target_lang: str = "original") -> str:
-        """Transcribes any dynamic format and handles automatic translation transformations seamlessly."""
+        """Transcribes any dynamic format natively using zero-cost web frameworks."""
         audio_io = io.BytesIO(audio_bytes)
         speech_lang = language_code
 
@@ -96,8 +91,6 @@ class TranscriptionService:
                 raw_wav_io.seek(0)
                 
                 with sr.AudioFile(raw_wav_io) as source:
-                    self.recognizer.dynamic_energy_threshold = False
-                    self.recognizer.energy_threshold = 100
                     self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                     audio_data = self.recognizer.record(source)
                     
