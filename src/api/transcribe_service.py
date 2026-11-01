@@ -24,15 +24,15 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # SAFE COORDINATE SCAN: Iterates through the top payload list directly to catch translated blocks
+                # EXACT EXTRACTION FIX: Drill directly into the grid matrix where translated fragments live
                 if data and isinstance(data, list) and len(data) > 0:
-                    text_matrix = data[0]
-                    if isinstance(text_matrix, list):
+                    sentence_matrix = data[0]
+                    if isinstance(sentence_matrix, list):
                         full_translation = ""
-                        for segment in text_matrix:
-                            if isinstance(segment, list) and len(segment) > 0 and isinstance(segment[0], str):
-                                # Position segment[0] isolates the translated text chunk string directly
-                                full_translation += segment[0]
+                        for segment in sentence_matrix:
+                            # Position 0 inside each inner segment array contains the actual translated phrase string
+                            if isinstance(segment, list) and len(segment) > 0 and segment[0]:
+                                full_translation += str(segment[0])
                         if full_translation.strip():
                             return full_translation.strip()
         except Exception as e:
@@ -56,9 +56,8 @@ class TranscriptionService:
                     
                     if det_res.ok and isinstance(det_res.json(), list):
                         raw_payload = det_res.json()
-                        # Position index 2 inside Google Translate's data structure exposes the language code
-                        if len(raw_payload) > 2 and isinstance(raw_payload[2], str):
-                            detected_slug = raw_payload[2].lower()
+                        if len(raw_payload) > 2 and isinstance(raw_payload, str):
+                            detected_slug = raw_payload.lower()
                             if "te" in detected_slug: return "te-IN"
                             if "hi" in detected_slug: return "hi-IN"
                             if "ta" in detected_slug: return "ta-IN"
