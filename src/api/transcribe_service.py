@@ -8,29 +8,39 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def detect_audio_language(self, audio_bytes: bytes, audio_format: str = "mp3") -> str:
-        """Inspects the baseline token vectors of an audio track snippet to auto-detect its spoken language."""
+        """Accurately identifies the spoken language domain by analyzing an initial audio snippet."""
         try:
-            # Step 1: Run a rapid global pass to convert the initial sample into an anonymous string block
-            headers = {"User-Agent": "Mozilla/5.0"}
-            api_url = "https://dictation.io" # Baseline evaluation probe
-            files = {'file': (f"sample.{audio_format}", audio_bytes[:150 * 1024], f"audio/{audio_format}")}
-            response = requests.post(api_url, files=files, headers=headers, timeout=15)
+            # Step 1: Run an immediate fast pass to read a tiny slice with standard en-US parameters
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            api_url = "https://dictation.io"
+            # Read a 200KB chunk for language classification metrics
+            files = {'file': (f"detect.{audio_format}", audio_bytes[:200 * 1024], f"audio/{audio_format}")}
+            response = requests.post(api_url, files=files, headers=headers, timeout=12)
             
-            # Step 2: Use an open translation prediction profile pass to determine the vocabulary source domain
             if response.ok and "text" in response.json():
-                sample_text = response.json()["text"]
-                if sample_text.strip():
-                    detect_url = f"https://googleapis.com{requests.utils.quote(sample_text)}"
-                    det_res = requests.get(detect_url, timeout=10)
+                sample_text = response.json()["text"].strip()
+                if sample_text:
+                    # Step 2: Query the linguistic signature engine to pull the absolute source language code
+                    detect_url = f"https://googleapis.com"
+                    params = {"client": "gtx", "sl": "auto", "tl": "en", "dt": "t", "q": sample_text}
+                    det_res = requests.get(detect_url, params=params, timeout=10)
+                    
                     if det_res.ok and isinstance(det_res.json(), list):
-                        # Position 2 inside Google Translate's matrix array holds the detected language code string (e.g., 'te', 'hi', 'en')
-                        lang_code = det_res.json()[2]
-                        if lang_code == "te": return "te-IN"
-                        if lang_code == "hi": return "hi-IN"
-                        if lang_code == "ta": return "ta-IN"
+                        raw_payload = det_res.json()
+                        # Position index 2 inside Google Translate's API reliably exposes the true source language string
+                        if len(raw_payload) > 2 and isinstance(raw_payload[2], str):
+                            detected_slug = raw_payload[2].lower()
+                            if "te" in detected_slug: return "te-IN"
+                            if "hi" in detected_slug: return "hi-IN"
+                            if "ta" in detected_slug: return "ta-IN"
+                            if "en" in detected_slug: return "en-US"
+                            # Dynamic auto-routing for other detected foreign profiles
+                            return f"{detected_slug}-IN" if len(detected_slug) == 2 else "en-US"
         except Exception:
             pass
-        return "te-IN" # Reliable default regional assignment tracking fallback
+        
+        # If the scan times out, we return en-US as a safe base standard instead of blindly sticking to Telugu
+        return "en-US"
 
     def _translate_text(self, text: str, target_lang: str) -> str:
         """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
@@ -49,15 +59,15 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # FIXED EXTRACTION LOOP: Iterate cleanly through returned index arrays to collect sentences
                 if data and isinstance(data, list) and len(data) > 0:
-                    text_matrix = data[0]
+                    # Parse through sentences to build the final translation string
+                    first_block = data[0]
                     full_translation = ""
-                    if isinstance(text_matrix, list):
-                        for element in text_matrix:
-                            if isinstance(element, list) and len(element) > 0:
-                                # Position 0 explicitly isolates individual sentence text blocks
-                                full_translation += str(element[0])
+                    if isinstance(first_block, list):
+                        for sentence_block in first_block:
+                            if isinstance(sentence_block, list) and len(sentence_block) > 0:
+                                # Position 0 contains the translated text fragment
+                                full_translation += str(sentence_block[0])
                         
                         if full_translation.strip():
                             return full_translation.strip()
@@ -65,7 +75,7 @@ class TranscriptionService:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
 
-    def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", language_code: str = "te-IN", target_lang: str = "original") -> str:
+    def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", language_code: str = "en-US", target_lang: str = "original") -> str:
         """Transcribes any dynamic format and handles automatic translation transformations seamlessly."""
         audio_io = io.BytesIO(audio_bytes)
         speech_lang = language_code
