@@ -1,6 +1,5 @@
 import requests
 import base64
-import io
 from typing import Dict, Any
 from src.config import settings
 
@@ -21,32 +20,36 @@ class TranscriptionService:
         return response.json()
 
     def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", model: str = "openai/whisper-large-v3") -> str:
-        """Transcribes physical audio streams using OpenRouter base64 transcription payloads."""
-        
-        # If the user uploads a bulky raw wav file, try to compress it using standard pydub if available
-        if audio_format.lower() == "wav" and len(audio_bytes) > 1024 * 1024:
-            try:
-                from pydub import AudioSegment
-                wav_io = io.BytesIO(audio_bytes)
-                audio = AudioSegment.from_wav(wav_io)
-                
-                mp3_io = io.BytesIO()
-                audio.export(mp3_io, format="mp3", bitrate="128k")
-                audio_bytes = mp3_io.getvalue()
-                audio_format = "mp3"
-            except ImportError:
-                # If pydub isn't installed, let it fall through or guide the user
-                pass
-
+        """Transcribes audio using modern multi-modal payload structures over chat completions."""
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+        mime_type = f"audio/{audio_format}"
+        if audio_format == "mp3":
+            mime_type = "audio/mpeg"
+
+        # Modern unified multi-modal payload formatting
         payload = {
             "model": model,
-            "input_audio": {
-                "data": base64_audio,
-                "format": audio_format
-            }
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Provide an exact, clean transcription of this audio without additional commentary."},
+                        {
+                            "type": "input_audio",
+                            "input_audio": {
+                                "data": base64_audio,
+                                "format": audio_format if audio_format != "mp3" else "mp3"
+                            }
+                        }
+                    ]
+                }
+            ]
         }
-        res_json = self._execute_post("audio/transcriptions", payload)
-        if "text" not in res_json:
-            raise KeyError(f"Unexpected response structure from OpenRouter: {res_json}")
-        return res_json["text"]
+        
+        res_json = self._execute_post("chat/completions", payload)
+        if "choices" in res_json and len(res_json["choices"]) > 0:
+            return res_json["choices"][0]["message"]["content"].strip()
+        elif "text" in res_json:
+            return res_json["text"]
+            
+        raise KeyError(f"Unexpected response structure from OpenRouter: {res_json}")
