@@ -8,7 +8,7 @@ class TranscriptionService:
         self.recognizer = sr.Recognizer()
 
     def _translate_text(self, text: str, target_lang: str) -> str:
-        """Helper method to isolate and parse translations instantly using flat JSON properties."""
+        """Helper method to isolate and parse translations instantly using flat JSON properties with auto-detection."""
         if not text or target_lang == "original" or text.startswith("☁️") or "With Size Optimization" in text:
             return text
         try:
@@ -16,7 +16,8 @@ class TranscriptionService:
             base_url = "https://translated.net"
             query_params = {
                 "q": text,
-                "langpair": f"en|{target_lang}"  # Formats standard language mapping pairs (e.g., en|te, en|ta, en|hi)
+                # FIX: Force source language to 'auto' so it dynamically captures any input string format (US English, Indian English, etc.)
+                "langpair": f"auto|{target_lang}"  
             }
             
             res = requests.get(base_url, params=query_params, timeout=10)
@@ -43,13 +44,11 @@ class TranscriptionService:
                 sample_text = response.json()["text"].strip()
                 if sample_text:
                     base_url = "https://translated.net"
-                    query_params = {"q": sample_text, "langpair": "en|en"}
+                    query_params = {"q": sample_text, "langpair": "auto|en"}
                     det_res = requests.get(base_url, params=query_params, timeout=10)
                     if det_res.ok:
-                        # Extract matches metadata structure properties natively
                         res_data = det_res.json()
                         if "matches" in res_data and len(res_data["matches"]) > 0:
-                            # Safely extract matching language profiles from the provider payload matrix
                             detected_slug = res_data["matches"][0].get("language", "en").lower()
                             if "te" in detected_slug: return "te-IN"
                             if "hi" in detected_slug: return "hi-IN"
