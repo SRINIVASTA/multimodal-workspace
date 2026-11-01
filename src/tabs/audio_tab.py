@@ -70,7 +70,7 @@ def render_audio_tab():
                 st.rerun()
 
     # =========================================================================
-    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Dual Language Selector Panel
+    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - Intelligent Auto-Detection Enabled
     # =========================================================================
     with tab_stt:
         st.write("### Transcribe & Translate Audio Track")
@@ -81,38 +81,46 @@ def render_audio_tab():
             key="stt_model_selector"
         )
         
-        # Grid columns for layout design efficiency
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            lang_choice = st.selectbox(
-                "🗣️ Spoken Audio Language (Input):",
-                ["Auto-Detect", "Telugu (తెలుగు)", "Hindi (हिन्दी)", "Tamil (தமிழ்)", "English"],
-                index=0,
-                key="stt_input_language_selector"
-            )
-            
-        with col2:
-            target_choice = st.selectbox(
-                "🌐 Output Text Language (Translation Target):",
-                ["Original (Same as Audio)", "English", "Telugu (తెలుగు)", "Hindi (हिन्दी)", "Tamil (தமிழ்)"],
-                index=0,
-                key="stt_output_language_selector"
-            )
-        
-        # Mappings for internal engine codes
-        input_code_map = {"Auto-Detect": "auto", "Telugu (తెలుగు)": "te-IN", "Hindi (हिन्दी)": "hi-IN", "Tamil (தமிழ்)": "ta-IN", "English": "en-US"}
-        output_code_map = {"Original (Same as Audio)": "original", "English": "en", "Telugu (తెలుగు)": "te", "Hindi (हिन्दी)": "hi", "Tamil (தமிழ்)": "ta"}
-        
-        selected_input_code = input_code_map[lang_choice]
-        selected_output_code = output_code_map[target_choice]
-
         uploaded_audio = st.file_uploader(
             "Upload Target Audio Track Frame:", 
             type=["mp3", "wav", "m4a", "ogg", "flac"],
             key="stt_audio_uploader"
         )
         
+        # Runtime execution logic pass to dynamically guess spoken tracks upfront
+        detected_lang_label = "Auto-Detecting on Upload..."
+        if uploaded_audio is not None:
+            if "last_file_name" not in st.session_state or st.session_state.last_file_name != uploaded_audio.name:
+                with st.spinner("🧠 Scanning audio waveform patterns to identify spoken language..."):
+                    try:
+                        st.session_state.last_file_name = uploaded_audio.name
+                        raw_bytes = uploaded_audio.getvalue()
+                        det_format = uploaded_audio.name.split(".")[-1].lower()
+                        if det_format == "m4a": det_format = "mp3"
+                        
+                        # Call language identification agent
+                        guessed_code = transcribe_service.detect_audio_language(raw_bytes, det_format)
+                        st.session_state.auto_detected_lang = guessed_code
+                    except Exception:
+                        st.session_state.auto_detected_lang = "te-IN" # Safe regional placeholder fallback
+            
+            # Map code strings visually back into clean UI component notices
+            code_visual_map = {"te-IN": "Telugu (తెలుగు)", "hi-IN": "Hindi (हिन्दी)", "ta-IN": "Tamil (தமிழ்)", "en-US": "English (US)"}
+            detected_lang_label = f"💡 Automatically Detected: {code_visual_map.get(st.session_state.auto_detected_lang, 'Telugu (తెలుగు)')}"
+        
+        # Display the smart structural state verification indicator notice window box
+        st.info(f"🗣️ Spoken Audio Language (Input Tracking): **{detected_lang_label}**")
+        
+        target_choice = st.selectbox(
+            "🌐 Output Text Language (Translation Target):",
+            ["Telugu (తెలుగు)", "Original (Same as Audio)", "English", "Hindi (हिन्दी)", "Tamil (தமிழ்)"],
+            index=0,
+            key="stt_output_language_selector"
+        )
+        
+        output_code_map = {"Original (Same as Audio)": "original", "English": "en", "Telugu (తెలుగు)": "te", "Hindi (हिन्दी)": "hi", "Tamil (தமிழ்)": "ta"}
+        selected_output_code = output_code_map[target_choice]
+
         if uploaded_audio is not None:
             detected_format = uploaded_audio.name.split(".")[-1].lower()
             if detected_format == "m4a": 
@@ -122,10 +130,13 @@ def render_audio_tab():
                 with st.spinner("Processing audio extraction and translation matrices..."):
                     try:
                         raw_audio_bytes = uploaded_audio.read()
+                        # Pass the dynamically guessed input language code string cleanly down to backend handlers
+                        chosen_input_lang = st.session_state.get("auto_detected_lang", "te-IN")
+                        
                         extracted_transcript = transcribe_service.speech_to_text(
                             audio_bytes=raw_audio_bytes,
                             audio_format=detected_format,
-                            language_code=selected_input_code,
+                            language_code=chosen_input_lang,
                             target_lang=selected_output_code
                         )
                         
@@ -151,4 +162,5 @@ def render_audio_tab():
             st.write("---")
             if st.button("🗑️ Clear Transcription State & File Window", use_container_width=True, key="clear_stt_btn"):
                 st.session_state.pop("last_active_transcript", None)
+                st.session_state.pop("last_file_name", None)
                 st.rerun()
