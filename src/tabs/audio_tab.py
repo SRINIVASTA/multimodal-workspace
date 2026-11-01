@@ -105,8 +105,13 @@ def render_audio_tab():
                         st.session_state.auto_detected_lang = "te-IN" # Safe regional placeholder fallback
             
             # Map code strings visually back into clean UI component notices
-            code_visual_map = {"te-IN": "Telugu (తెలుగు)", "hi-IN": "Hindi (हिन्दी)", "ta-IN": "Tamil (தமிழ்)", "en-US": "English (US)"}
-            detected_lang_label = f"💡 Automatically Detected: {code_visual_map.get(st.session_state.auto_detected_lang, 'Telugu (తెలుగు)')}"
+            code_visual_map = {
+                "te-IN": "Telugu (తెలుగు)", 
+                "hi-IN": "Hindi (हिन्दी)", 
+                "ta-IN": "Tamil (தமிழ்)", 
+                "en-US": "English (US)"
+            }
+            detected_lang_label = f"💡 Automatically Detected: {code_visual_map.get(st.session_state.auto_detected_lang, 'English (US)')}"
         
         # Display the smart structural state verification indicator notice window box
         st.info(f"🗣️ Spoken Audio Language (Input Tracking): **{detected_lang_label}**")
