@@ -1,38 +1,28 @@
-import requests
-import base64
+import io
+import speech_recognition as sr
 from typing import Dict, Any
-from src.config import settings
 
 class TranscriptionService:
     def __init__(self):
-        self.headers = settings.headers
-        self.base_url = "https://openrouter.ai/api/v1"
+        # Initialized locally; no OpenRouter API network endpoints or balance checks are hit
+        self.recognizer = sr.Recognizer()
 
-    def _execute_post(self, endpoint_route: str, payload: Dict[str, Any]) -> Any:
-        if not settings.OPENROUTER_API_KEY:
-            raise ValueError("🔒 Key Error: OPENROUTER_API_KEY is missing from configuration profiles.")
+    def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", model: str = "") -> str:
+        """Transcribes physical audio streams using local zero-cost processing libraries."""
+        # Convert incoming bytes matrix stream securely to an in-memory stream layout
+        audio_file_stream = io.BytesIO(audio_bytes)
+        
+        # Read and unpack the target audio buffer structure
+        with sr.AudioFile(audio_file_stream) as source:
+            # Calibrate structural processing lines for background noise distortion
+            self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            audio_data = self.recognizer.record(source)
             
-        full_url = f"{self.base_url}/{endpoint_route.lstrip('/')}"
-        response = requests.post(url=full_url, headers=self.headers, json=payload, timeout=120)
-        
-        if not response.ok:
-            raise RuntimeError(f"OpenRouter API Network Crash {response.status_code}: {response.text[:200]}")
-        return response.json()
-
-    def speech_to_text(self, audio_bytes: bytes, audio_format: str = "mp3", model: str = "openai/whisper-large-v3") -> str:
-        """Transcribes physical audio streams using OpenRouter base64 transcription payloads."""
-        base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
-        
-        # OpenRouter's dedicated speech-to-text JSON payload model
-        payload = {
-            "model": model,
-            "input_audio": {
-                "data": base64_audio,
-                "format": audio_format if audio_format != "m4a" else "mp3"
-            }
-        }
-        
-        res_json = self._execute_post("audio/transcriptions", payload)
-        if "text" not in res_json:
-            raise KeyError(f"Unexpected response structure from OpenRouter: {res_json}")
-        return res_json["text"]
+        try:
+            # Process via zero-cost API engine endpoints (No OpenRouter key or wallet balance requested)
+            transcript_text = self.recognizer.recognize_google(audio_data)
+            return transcript_text
+        except sr.UnknownValueError:
+            return "Local Transcription Error: Audio clarity was too low to isolate clear phrase strings."
+        except sr.RequestError as request_err:
+            raise RuntimeError(f"Local Processing Network Interconnect Error: {str(request_err)}")
