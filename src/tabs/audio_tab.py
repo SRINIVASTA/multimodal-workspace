@@ -120,6 +120,11 @@ def render_audio_tab():
             )
             
             if st.button("💾 Sync Transcript to Tab 1 Document Draft", use_container_width=True):
+                # KEEP THIS: Updates your core global variable safely
                 st.session_state.document_draft = edited_transcript
-                st.session_state["text_tab_canvas_editor"] = edited_transcript
+                
+                # REMOVE/DELETE THIS LINE: It causes the Streamlit crash
+                # st.session_state["text_tab_canvas_editor"] = edited_transcript
+                
                 st.info("Draft snapshot synchronized back into main Workspace Matrix panel.")
+                st.rerun()  # Forces a clean page pass to update Tab 1 layout
