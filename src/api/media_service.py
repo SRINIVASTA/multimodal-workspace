@@ -77,8 +77,11 @@ class UnifiedAIService:
         payload = {
             "model": model,
             "input": text,
-            "voice": voice,
             "response_format": "mp3"
         }
-        # Returns raw audio binary stream layers directly to the local Streamlit audio component layout
+        
+        # FIX: Explicitly pop the voice parameter from the dict if it's empty to prevent Zod validation failures
+        if voice and voice.strip():
+            payload["voice"] = voice
+            
         return self._execute_post("audio/speech", payload, stream_bytes=True)
