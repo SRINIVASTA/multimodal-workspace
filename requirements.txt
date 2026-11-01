@@ -10,3 +10,4 @@ reportlab
 pypdf
 python-docx
 pillow
+pydub
