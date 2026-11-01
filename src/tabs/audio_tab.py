@@ -14,7 +14,7 @@ def render_audio_tab():
     tab_tts, tab_stt = st.tabs(["⚡ Text-to-Speech (Synthesis)", "🎙️ Speech-to-Text (Transcription)"])
     
     # =========================================================================
-    # SUB-TAB 1: TEXT-TO-SPEECH (TTS) - Native Downloader Added
+    # SUB-TAB 1: TEXT-TO-SPEECH (TTS)
     # =========================================================================
     with tab_tts:
         audio_model = st.selectbox(
@@ -50,7 +50,6 @@ def render_audio_tab():
             else:
                 with st.spinner("Compiling high-fidelity clean stream tracks..."):
                     try:
-                        # FIX: We drop the voice string here to prevent Provider 400 parameter errors
                         audio_bytes = ai_service.text_to_speech(text=audio_text[:2000], model=audio_model, voice="")
                         st.session_state["compiled_audio_track"] = audio_bytes
                         st.success("Clean high-fidelity audio narration generated successfully!")
@@ -66,9 +65,14 @@ def render_audio_tab():
                 mime="audio/mp3",
                 use_container_width=True
             )
+            
+            st.write("---")
+            if st.button("🗑️ Clear Synthesized Audio State", use_container_width=True, key="clear_tts_btn"):
+                st.session_state.pop("compiled_audio_track", None)
+                st.rerun()
 
     # =========================================================================
-    # SUB-TAB 2: SPEECH-TO-TEXT (STT) - With Size Optimization Guardrails
+    # SUB-TAB 2: SPEECH-TO-TEXT (STT)
     # =========================================================================
     with tab_stt:
         st.write("### Transcribe Audio Track to Text")
@@ -90,41 +94,37 @@ def render_audio_tab():
             if detected_format == "m4a": 
                 detected_format = "mp3"
                 
-            # Prevent immediate layout overflow issues by tracking raw sizes upfront
-            raw_mb = len(uploaded_audio.getvalue()) / (1024 * 1024)
-            if raw_mb > 25.0:
-                st.error(f"🛑 File size ({raw_mb:.1f} MB) exceeds maximum API framework boundaries. Please upload a smaller snippet.")
-            else:
-                if st.button("🔮 Run Transcription Pipeline", use_container_width=True):
-                    with st.spinner("Decoding audio binary matrices..."):
-                        try:
-                            raw_audio_bytes = uploaded_audio.read()
-                            
-                            # Standardize transmission routing parameters
-                            extracted_transcript = transcribe_service.speech_to_text(
-                                audio_bytes=raw_audio_bytes,
-                                audio_format=detected_format,
-                                model=st_model
-                            )
-                            
-                            st.session_state["last_active_transcript"] = extracted_transcript
-                            st.success("Transcription processing round finalized successfully!")
-                        except Exception as trans_err:
-                            st.error(f"Transcription Pipeline Crash: {str(trans_err)}")
-                            
+            if st.button("🔮 Run Transcription Pipeline", use_container_width=True):
+                with st.spinner("Decoding audio binary matrices..."):
+                    try:
+                        raw_audio_bytes = uploaded_audio.read()
+                        extracted_transcript = transcribe_service.speech_to_text(
+                            audio_bytes=raw_audio_bytes,
+                            audio_format=detected_format,
+                            model=st_model
+                        )
+                        
+                        st.session_state["last_active_transcript"] = extracted_transcript
+                        st.success("Transcription processing round finalized successfully!")
+                    except Exception as trans_err:
+                        st.error(f"Transcription Pipeline Crash: {str(trans_err)}")
+                        
         if "last_active_transcript" in st.session_state:
             edited_transcript = st.text_area(
                 "Extracted Transcript Output Context Window:", 
                 value=st.session_state["last_active_transcript"], 
-                height=180
+                height=180,
+                key="stt_transcript_edit_area"
             )
             
             if st.button("💾 Sync Transcript to Tab 1 Document Draft", use_container_width=True):
-                # KEEP THIS: Updates your core global variable safely
                 st.session_state.document_draft = edited_transcript
+                # Use query parameters or toast message alerts to guarantee user notice before rerun cycle
+                st.toast("✅ Workspace Synced! Draft shifted to Document Engine.", icon="💾")
+                st.success("Draft snapshot synchronized back into main Workspace Matrix panel successfully!")
+                st.rerun()
                 
-                # REMOVE/DELETE THIS LINE: It causes the Streamlit crash
-                # st.session_state["text_tab_canvas_editor"] = edited_transcript
-                
-                st.info("Draft snapshot synchronized back into main Workspace Matrix panel.")
-                st.rerun()  # Forces a clean page pass to update Tab 1 layout
+            st.write("---")
+            if st.button("🗑️ Clear Transcription State & File Window", use_container_width=True, key="clear_stt_btn"):
+                st.session_state.pop("last_active_transcript", None)
+                st.rerun()
