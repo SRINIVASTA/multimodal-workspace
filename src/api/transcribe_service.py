@@ -7,6 +7,22 @@ class TranscriptionService:
     def __init__(self):
         self.recognizer = sr.Recognizer()
 
+    def _deep_crawl_translation(self, matrix_node) -> str:
+        """Recursively extracts only valid translated text tokens from any nested structure."""
+        if isinstance(matrix_node, str):
+            # Block system names, language tags, or matching echoes of original english text parameters
+            normalized = matrix_node.strip()
+            if normalized and normalized not in ["en", "te", "hi", "ta", "auto", "gtx"]:
+                return normalized + " "
+            return ""
+            
+        full_result = ""
+        if isinstance(matrix_node, list):
+            # Target the first sub-elements natively where translation segments are always stacked
+            for sub_node in matrix_node:
+                full_result += self._deep_crawl_translation(sub_node)
+        return full_result
+
     def _translate_text(self, text: str, target_lang: str) -> str:
         """Helper method to isolate and parse the exact translation text matrix segments cleanly."""
         if not text or target_lang == "original" or text.startswith("☁️") or "Transcription Warning" in text:
@@ -24,17 +40,17 @@ class TranscriptionService:
             res = requests.get(base_url, params=query_params, timeout=10)
             if res.ok:
                 data = res.json()
-                # TRIPLE-GUARDED MATRIX FIX: Safely enters the nested lists to pull translation slices
+                
+                # Execute deep recursive crawl pass to unpack text safely
                 if data and isinstance(data, list) and len(data) > 0:
-                    first_matrix = data[0]
-                    if isinstance(first_matrix, list):
-                        full_translation = ""
-                        for sentence_block in first_matrix:
-                            # Position 0 inside each sub-array holds the translated segment string
-                            if isinstance(sentence_block, list) and len(sentence_block) > 0 and isinstance(sentence_block[0], str):
-                                full_translation += sentence_block[0]
-                        if full_translation.strip():
-                            return full_translation.strip()
+                    # Pass only the first primary array cluster containing sentence mappings
+                    translated_block = self._deep_crawl_translation(data[0])
+                    
+                    # Clean punctuation formatting
+                    cleaned_result = translated_block.strip()
+                    if cleaned_result and cleaned_result != text.strip():
+                        return cleaned_result
+                        
         except Exception as e:
             return f"{text}\n\n[Translation Server Busy: {str(e)}]"
         return text
@@ -105,7 +121,7 @@ class TranscriptionService:
                     api_url = f"https://dictation.io{speech_lang}"
                     files = {'file': (f"audio.{audio_format}", audio_bytes, f"audio/{audio_format}")}
                     response = requests.post(api_url, files=files, headers=headers, timeout=30)
-                    if response.ok and "text" in response.json():
+                    if response.ok sweetness and "text" in response.json():
                         raw_text = response.json()["text"]
                 except Exception:
                     pass
