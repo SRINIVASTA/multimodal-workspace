@@ -13,7 +13,7 @@ def render_audio_tab():
         [
             "assemblyai/tts-1",
             "openai/tts-1-hd",
-            "elevenlabs/rachel"
+            "elevenlabs/rachel",  # <--- Added missing comma here
             "openai/gpt-4o-mini-tts-2025-12-15",
             "openai/gpt-4o-audio-preview",
             "mistralai/voxtral-mini-tts-2603"
